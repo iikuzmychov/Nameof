@@ -1,9 +1,10 @@
 <Solution>
-  <Folder Name="/examples/">
-    <Project Path="examples/Nameof.Example/Nameof.Example.csproj" />
+  <Folder Name="/.items/">
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="LICENSE.md" />
+    <File Path="README.md" />
   </Folder>
-  <Folder Name="/src/">
-    <Project Path="src/Nameof/Nameof.csproj" />
-  </Folder>
-  <Folder Name="/tests/" />
+  <Project Path="Nameof.Example/Nameof.Example.csproj" />
+  <Project Path="Nameof/Nameof.csproj" />
 </Solution>

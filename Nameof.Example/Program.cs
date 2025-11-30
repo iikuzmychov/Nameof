@@ -2,7 +2,7 @@ using Nameof;
 
 [assembly: GenerateNameof<ConsoleKeyInfo>]
 [assembly: GenerateNameof(typeof(SomeType))]
-[assembly: GenerateNameof("System.IO.ConsoleStream", assemblyWhere: typeof(Console))]
+[assembly: GenerateNameof("System.IO.ConsoleStream", inAssemblyOf: typeof(Console))]
 
 Console.WriteLine("=== ConsoleKeyInfo (external public type) ===");
 Console.WriteLine("Private fields:");

@@ -32,7 +32,7 @@ Nameof usage:
 using Nameof;
 using SomeNamespace;
 
-[assembly: GenerateNameof(typeof(SomeClass))]
+[assembly: GenerateNameof<SomeClass>]
 
 Console.WriteLine(nameof<SomeClass>._privateField);           // Output: "_privateField"
 Console.WriteLine(nameof<SomeClass>.ProtectedProperty);       // Output: "ProtectedProperty"
@@ -120,7 +120,7 @@ Console.WriteLine(nameof<SomeClass>.PublicProperty);  // Output: "PublicProperty
       [global::System.AttributeUsage(global::System.AttributeTargets.Assembly)]
       internal sealed class GenerateNameofAttribute : global::System.Attribute
       {
-          public GenerateNameofAttribute(global::System.Type type)
+          public GenerateNameofAttribute(string fullTypeName, global::System.Type inAssemblyOf)
           {
           }
       }
