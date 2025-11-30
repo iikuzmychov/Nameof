@@ -1,10 +1,9 @@
 <Solution>
-  <Folder Name="/samples/">
-    <Project Path="samples/Nameof.Sample/Nameof.Sample.csproj" />
+  <Folder Name="/examples/">
+    <Project Path="examples/Nameof.Example/Nameof.Example.csproj" />
   </Folder>
   <Folder Name="/src/">
-    <Project Path="src/Nameof.Shared/Nameof.Shared.csproj" Id="ae76f0e9-5bc6-4a7a-83e6-7c9a91f8b458" />
-    <Project Path="src/Nameof.SourceGenerators/Nameof.SourceGenerators.csproj" />
+    <Project Path="src/Nameof/Nameof.csproj" />
   </Folder>
   <Folder Name="/tests/" />
 </Solution>
