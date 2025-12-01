@@ -2,7 +2,8 @@ using Nameof;
 
 [assembly: GenerateNameof<ConsoleKeyInfo>]
 [assembly: GenerateNameof(typeof(SomeType))]
-[assembly: GenerateNameof("System.IO.ConsoleStream", inAssemblyOf: typeof(Console))]
+[assembly: GenerateNameof("System.IO.ConsoleStream", assemblyOf: typeof(Console))]
+[assembly: GenerateNameof("Nameof.NameofGenerator", assemblyName: "Nameof")]
 
 Console.WriteLine("=== ConsoleKeyInfo (external public type) ===");
 Console.WriteLine("Private fields:");
@@ -20,6 +21,11 @@ Console.WriteLine("Private members:");
 Console.WriteLine(nameof<SomeType>._someField);
 Console.WriteLine(nameof<SomeType>.SomeMethod);
 Console.WriteLine(nameof<SomeType>.SomeProperty);
+
+Console.WriteLine("\n=== NameofGenerator (external INTERNAL type) ===");
+Console.WriteLine("Private members (via stub + reflection):");
+Console.WriteLine(nameof<NameofGenerator>.UnsupportedFullTypeNameDescriptor);
+Console.WriteLine(nameof<NameofGenerator>.ResolutionFailedUsingAssemblyOfDescriptor);
 
 internal class SomeType
 {

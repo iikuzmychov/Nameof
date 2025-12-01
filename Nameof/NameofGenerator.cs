@@ -7,7 +7,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Metadata;
-using System.Reflection.PortableExecutable;
 using System.Text;
 
 namespace Nameof;
@@ -18,7 +17,8 @@ internal sealed class NameofGenerator : IIncrementalGenerator
     private readonly record struct Request(
         INamedTypeSymbol? Symbol,
         string? FullTypeName,
-        INamedTypeSymbol? InAssemblyOfType);
+        INamedTypeSymbol? AssemblyOfType,
+        string? AssemblyName);
 
     private static readonly DiagnosticDescriptor UnsupportedFullTypeNameDescriptor = new(
         id: "NAMEOF001",
@@ -28,12 +28,20 @@ internal sealed class NameofGenerator : IIncrementalGenerator
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
-    private static readonly DiagnosticDescriptor RuntimeTypeResolutionFailedDescriptor = new(
+    private static readonly DiagnosticDescriptor ResolutionFailedUsingAssemblyOfDescriptor = new(
         id: "NAMEOF002",
-        title: "Runtime type resolution failed",
-        messageFormat: "Could not resolve runtime type \"{0}\" using inAssemblyOf \"{1}\". No members were generated.",
+        title: "Type resolution failed",
+        messageFormat: "Could not resolve type \"{0}\" using assemblyOf \"{1}\". No members were generated.",
         category: "NameofGenerator",
-        defaultSeverity: DiagnosticSeverity.Info,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor ResolutionFailedUsingAssemblyNameDescriptor = new(
+        id: "NAMEOF003",
+        title: "Type resolution failed",
+        messageFormat: "Could not resolve type \"{0}\" using assemblyName \"{1}\". No members were generated.",
+        category: "NameofGenerator",
+        defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -70,7 +78,7 @@ internal sealed class NameofGenerator : IIncrementalGenerator
                     continue;
                 }
 
-                if (request.FullTypeName is null || request.InAssemblyOfType is null)
+                if (request.FullTypeName is null)
                 {
                     continue;
                 }
@@ -85,21 +93,46 @@ internal sealed class NameofGenerator : IIncrementalGenerator
                     continue;
                 }
 
-                var stringKey = $"{request.InAssemblyOfType.ContainingAssembly.Identity.Name}|{request.FullTypeName}";
-                if (!seen.Add(stringKey))
+                if (request.AssemblyOfType is not null)
                 {
+                    var key = $"type|{request.AssemblyOfType.ContainingAssembly.Identity.Name}|{request.FullTypeName}";
+                    if (!seen.Add(key))
+                    {
+                        continue;
+                    }
+
+                    var source = GenerateForFullTypeName(
+                        spc,
+                        input.Compilation,
+                        request.FullTypeName,
+                        request.AssemblyOfType);
+
+                    if (!string.IsNullOrWhiteSpace(source))
+                    {
+                        spc.AddSource($"Nameof.{MakeId(key)}.g.cs", SourceText.From(source, Encoding.UTF8));
+                    }
+
                     continue;
                 }
 
-                var source2 = GenerateForFullTypeName(
-                    spc,
-                    input.Compilation,
-                    request.FullTypeName,
-                    request.InAssemblyOfType);
-
-                if (!string.IsNullOrWhiteSpace(source2))
+                if (request.AssemblyName is not null)
                 {
-                    spc.AddSource($"Nameof.{MakeId(stringKey)}.g.cs", SourceText.From(source2, Encoding.UTF8));
+                    var key = $"name|{request.AssemblyName}|{request.FullTypeName}";
+                    if (!seen.Add(key))
+                    {
+                        continue;
+                    }
+
+                    var source = GenerateForFullTypeName(
+                        spc,
+                        input.Compilation,
+                        request.FullTypeName,
+                        request.AssemblyName);
+
+                    if (!string.IsNullOrWhiteSpace(source))
+                    {
+                        spc.AddSource($"Nameof.{MakeId(key)}.g.cs", SourceText.From(source, Encoding.UTF8));
+                    }
                 }
             }
         });
@@ -141,7 +174,7 @@ internal sealed class NameofGenerator : IIncrementalGenerator
             {
                 if (attributeClass.TypeArguments[0] is INamedTypeSymbol typeArgument)
                 {
-                    builder.Add(new Request(typeArgument, null, null));
+                    builder.Add(new Request(typeArgument, null, null, null));
                 }
 
                 continue;
@@ -157,7 +190,7 @@ internal sealed class NameofGenerator : IIncrementalGenerator
                 var arg0 = attribute.ConstructorArguments[0];
                 if (arg0.Kind == TypedConstantKind.Type && arg0.Value is INamedTypeSymbol typeSymbol)
                 {
-                    builder.Add(new Request(typeSymbol, null, null));
+                    builder.Add(new Request(typeSymbol, null, null, null));
                 }
 
                 continue;
@@ -168,16 +201,27 @@ internal sealed class NameofGenerator : IIncrementalGenerator
                 var arg0 = attribute.ConstructorArguments[0];
                 var arg1 = attribute.ConstructorArguments[1];
 
-                if (arg0.Kind == TypedConstantKind.Primitive &&
-                    arg0.Value is string fullTypeName &&
-                    arg1.Kind == TypedConstantKind.Type &&
-                    arg1.Value is INamedTypeSymbol inAssemblyOfType)
+                if (arg0.Kind != TypedConstantKind.Primitive || arg0.Value is not string fullTypeName)
                 {
-                    var resolved = compilation.GetTypeByMetadataName(fullTypeName);
+                    continue;
+                }
 
-                    builder.Add(resolved is not null
-                        ? new Request(resolved, null, null)
-                        : new Request(null, fullTypeName, inAssemblyOfType));
+                var resolved = compilation.GetTypeByMetadataName(fullTypeName);
+                if (resolved is not null)
+                {
+                    builder.Add(new Request(resolved, null, null, null));
+                    continue;
+                }
+
+                if (arg1.Kind == TypedConstantKind.Type && arg1.Value is INamedTypeSymbol assemblyOfType)
+                {
+                    builder.Add(new Request(null, fullTypeName, assemblyOfType, null));
+                    continue;
+                }
+
+                if (arg1.Kind == TypedConstantKind.Primitive && arg1.Value is string assemblyName)
+                {
+                    builder.Add(new Request(null, fullTypeName, null, assemblyName));
                 }
             }
         }
@@ -192,17 +236,17 @@ internal sealed class NameofGenerator : IIncrementalGenerator
             return false;
         }
 
-        if (fullTypeName.Contains("`", StringComparison.Ordinal))
+        if (fullTypeName.IndexOf('`') >= 0)
         {
             return false;
         }
 
-        if (fullTypeName.Contains("+", StringComparison.Ordinal))
+        if (fullTypeName.IndexOf('+') >= 0)
         {
             return false;
         }
 
-        if (fullTypeName.Contains("[", StringComparison.Ordinal) || fullTypeName.Contains("]", StringComparison.Ordinal))
+        if (fullTypeName.IndexOf('[') >= 0 || fullTypeName.IndexOf(']') >= 0)
         {
             return false;
         }
@@ -214,7 +258,56 @@ internal sealed class NameofGenerator : IIncrementalGenerator
         SourceProductionContext context,
         Compilation compilation,
         string fullTypeName,
-        INamedTypeSymbol inAssemblyOfType)
+        INamedTypeSymbol assemblyOfType)
+    {
+        var assemblyName = assemblyOfType.ContainingAssembly.Identity.Name;
+
+        var memberNames =
+            TryExtractMemberNamesFromReferenceMetadata(compilation, assemblyName, fullTypeName, includePublicMembers: true) ??
+            TryExtractMemberNamesFromRuntimeResolution(fullTypeName, assemblyOfType, includePublicMembers: true);
+
+        if (memberNames is null || memberNames.Count == 0)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                ResolutionFailedUsingAssemblyOfDescriptor,
+                Location.None,
+                fullTypeName,
+                assemblyOfType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+
+            return string.Empty;
+        }
+
+        return GenerateForResolvedMembers(compilation, fullTypeName, memberNames);
+    }
+
+    private static string GenerateForFullTypeName(
+        SourceProductionContext context,
+        Compilation compilation,
+        string fullTypeName,
+        string assemblyName)
+    {
+        var memberNames =
+            TryExtractMemberNamesFromReferenceMetadata(compilation, assemblyName, fullTypeName, includePublicMembers: true) ??
+            TryExtractMemberNamesFromRuntimeResolution(compilation, fullTypeName, assemblyName, includePublicMembers: true);
+
+        if (memberNames is null || memberNames.Count == 0)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                ResolutionFailedUsingAssemblyNameDescriptor,
+                Location.None,
+                fullTypeName,
+                assemblyName));
+
+            return string.Empty;
+        }
+
+        return GenerateForResolvedMembers(compilation, fullTypeName, memberNames);
+    }
+
+    private static string GenerateForResolvedMembers(
+        Compilation compilation,
+        string fullTypeName,
+        HashSet<string> memberNames)
     {
         var (namespaceName, typeName) = SplitNamespaceAndTypeName(fullTypeName);
         if (string.IsNullOrWhiteSpace(typeName))
@@ -222,31 +315,7 @@ internal sealed class NameofGenerator : IIncrementalGenerator
             return string.Empty;
         }
 
-        var runtimeType = TryResolveRuntimeType(fullTypeName, inAssemblyOfType);
-
-        HashSet<string>? memberNames = null;
-        if (runtimeType is not null)
-        {
-            memberNames = ExtractNonPublicMemberNames(runtimeType);
-        }
-        else
-        {
-            memberNames = TryExtractNonPublicMemberNamesFromRuntimeAssemblyFile(fullTypeName, inAssemblyOfType);
-        }
-
-        if (memberNames is null || memberNames.Count == 0)
-        {
-            context.ReportDiagnostic(Diagnostic.Create(
-                RuntimeTypeResolutionFailedDescriptor,
-                Location.None,
-                fullTypeName,
-                inAssemblyOfType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
-
-            return string.Empty;
-        }
-
         var hasSymbolInCompilation = compilation.GetTypeByMetadataName(fullTypeName) is not null;
-        var stub = GetStubKind(runtimeType);
 
         var writer = new CodeWriter();
         writer.Line("#nullable enable");
@@ -259,12 +328,8 @@ internal sealed class NameofGenerator : IIncrementalGenerator
 
         if (!hasSymbolInCompilation)
         {
-            writer.OpenBlock($"internal{stub.SealedKeyword} {stub.TypeKeyword} {typeName}");
-            if (stub.NeedsPrivateConstructor)
-            {
-                writer.Line($"private {typeName}() {{ }}");
-            }
-
+            writer.OpenBlock($"internal sealed class {typeName}");
+            writer.Line($"private {typeName}() {{ }}");
             writer.CloseBlock();
             writer.Line();
         }
@@ -296,8 +361,13 @@ internal sealed class NameofGenerator : IIncrementalGenerator
             ? type.ContainingNamespace.ToDisplayString()
             : null;
 
-        var nonPublicMemberNames = TryGetNonPublicMemberNamesViaReflection(type) ?? ExtractNonPublicMemberNames(type);
-        if (nonPublicMemberNames.Count == 0)
+        var includePublicMembers = type.DeclaredAccessibility != Accessibility.Public;
+
+        var memberNames =
+            TryGetMemberNamesViaReflection(type, includePublicMembers) ??
+            ExtractMemberNames(type, includePublicMembers);
+
+        if (memberNames.Count == 0)
         {
             return string.Empty;
         }
@@ -320,6 +390,7 @@ internal sealed class NameofGenerator : IIncrementalGenerator
         {
             var typeParameters = FormatTypeParameters(type);
             writer.OpenBlock($"internal{stub.SealedKeyword} {stub.TypeKeyword} {type.Name}{typeParameters}");
+
             if (stub.NeedsPrivateConstructor)
             {
                 writer.Line($"private {type.Name}() {{ }}");
@@ -332,7 +403,7 @@ internal sealed class NameofGenerator : IIncrementalGenerator
         writer.OpenBlock($"internal static class {wrapperClassName}");
         writer.OpenBlock($"extension(global::Nameof.nameof<{fullyQualifiedType}>)");
 
-        foreach (var (identifier, value) in BuildMemberMap(nonPublicMemberNames).OrderBy(m => m.Identifier, StringComparer.Ordinal))
+        foreach (var (identifier, value) in BuildMemberMap(memberNames).OrderBy(m => m.Identifier, StringComparer.Ordinal))
         {
             writer.Line($"public static string {identifier} => \"{EscapeStringLiteral(value)}\";");
         }
@@ -358,7 +429,7 @@ internal sealed class NameofGenerator : IIncrementalGenerator
         return "<" + string.Join(", ", type.TypeParameters.Select(p => p.Name)) + ">";
     }
 
-    private static HashSet<string> ExtractNonPublicMemberNames(INamedTypeSymbol type)
+    private static HashSet<string> ExtractMemberNames(INamedTypeSymbol type, bool includePublicMembers)
     {
         var names = new HashSet<string>(StringComparer.Ordinal);
 
@@ -369,7 +440,7 @@ internal sealed class NameofGenerator : IIncrementalGenerator
                 continue;
             }
 
-            if (member.DeclaredAccessibility == Accessibility.Public)
+            if (!includePublicMembers && member.DeclaredAccessibility == Accessibility.Public)
             {
                 continue;
             }
@@ -403,31 +474,6 @@ internal sealed class NameofGenerator : IIncrementalGenerator
         return (fullTypeName[..lastDot], fullTypeName[(lastDot + 1)..]);
     }
 
-    private static (string TypeKeyword, string SealedKeyword, bool NeedsPrivateConstructor) GetStubKind(Type? runtimeType)
-    {
-        if (runtimeType is null)
-        {
-            return ("class", " sealed", true);
-        }
-
-        if (runtimeType.IsEnum)
-        {
-            return ("enum", "", false);
-        }
-
-        if (runtimeType.IsInterface)
-        {
-            return ("interface", "", false);
-        }
-
-        if (runtimeType.IsValueType)
-        {
-            return ("struct", "", false);
-        }
-
-        return ("class", " sealed", true);
-    }
-
     private static (string TypeKeyword, string SealedKeyword, bool NeedsPrivateConstructor) GetStubKind(INamedTypeSymbol type)
     {
         return type.TypeKind switch
@@ -439,212 +485,64 @@ internal sealed class NameofGenerator : IIncrementalGenerator
         };
     }
 
-#pragma warning disable RS1035
-    private static Type? TryResolveRuntimeType(string fullTypeName, INamedTypeSymbol inAssemblyOfType)
+    private static HashSet<string>? TryExtractMemberNamesFromReferenceMetadata(
+        Compilation compilation,
+        string assemblyName,
+        string fullTypeName,
+        bool includePublicMembers)
     {
-        try
+        foreach (var reference in compilation.References)
         {
-            var assemblyName = inAssemblyOfType.ContainingAssembly.Identity.Name;
-            var inAssemblyOfFullName = inAssemblyOfType
-                .ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                .Replace("global::", string.Empty);
-
-            var whereRuntimeType =
-                Type.GetType($"{inAssemblyOfFullName}, {assemblyName}", throwOnError: false) ??
-                TryGetLoadedAssembly(assemblyName)?.GetType(inAssemblyOfFullName, throwOnError: false);
-
-            var targetAssembly = whereRuntimeType?.Assembly ?? TryGetLoadedAssembly(assemblyName);
-
-            var resolved = targetAssembly?.GetType(fullTypeName, throwOnError: false);
-            if (resolved is not null)
+            if (reference is not PortableExecutableReference peReference)
             {
-                return resolved;
+                continue;
             }
 
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            if (compilation.GetAssemblyOrModuleSymbol(reference) is not IAssemblySymbol assemblySymbol)
             {
-                var candidate = assembly.GetType(fullTypeName, throwOnError: false);
-                if (candidate is not null)
+                continue;
+            }
+
+            if (!string.Equals(assemblySymbol.Identity.Name, assemblyName, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var metadata = peReference.GetMetadata();
+
+            if (metadata is AssemblyMetadata assemblyMetadata)
+            {
+                foreach (var module in assemblyMetadata.GetModules())
                 {
-                    return candidate;
-                }
-            }
-
-            return null;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static Assembly? TryGetLoadedAssembly(string assemblyName)
-    {
-        var loaded = AppDomain.CurrentDomain.GetAssemblies()
-            .FirstOrDefault(a => string.Equals(a.GetName().Name, assemblyName, StringComparison.Ordinal));
-
-        if (loaded is not null)
-        {
-            return loaded;
-        }
-
-        try
-        {
-            return Assembly.Load(assemblyName);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static HashSet<string>? TryGetNonPublicMemberNamesViaReflection(INamedTypeSymbol typeSymbol)
-    {
-        try
-        {
-            var fullTypeName = typeSymbol
-                .ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
-                .Replace("global::", string.Empty);
-
-            var assemblyName = typeSymbol.ContainingAssembly.Identity.Name;
-
-            var runtimeType =
-                Type.GetType($"{fullTypeName}, {assemblyName}", throwOnError: false) ??
-                TryGetLoadedAssembly(assemblyName)?.GetType(fullTypeName, throwOnError: false);
-
-            return runtimeType is null ? null : ExtractNonPublicMemberNames(runtimeType);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static HashSet<string>? TryExtractNonPublicMemberNamesFromRuntimeAssemblyFile(string fullTypeName, INamedTypeSymbol inAssemblyOfType)
-    {
-        try
-        {
-            var assemblyName = inAssemblyOfType.ContainingAssembly.Identity.Name;
-            var assemblyPath = TryResolveRuntimeAssemblyPath(assemblyName);
-            if (assemblyPath is null)
-            {
-                return null;
-            }
-
-            using var stream = System.IO.File.OpenRead(assemblyPath);
-            using var peReader = new PEReader(stream);
-
-            if (!peReader.HasMetadata)
-            {
-                return null;
-            }
-
-            return ExtractNonPublicMemberNames(peReader.GetMetadataReader(), fullTypeName);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static string? TryResolveRuntimeAssemblyPath(string assemblyName)
-    {
-        try
-        {
-            var loaded = TryGetLoadedAssembly(assemblyName);
-            if (loaded is not null && !string.IsNullOrWhiteSpace(loaded.Location) && System.IO.File.Exists(loaded.Location))
-            {
-                return loaded.Location;
-            }
-
-            var runtimeDir = System.IO.Path.GetDirectoryName(typeof(object).Assembly.Location);
-            if (string.IsNullOrWhiteSpace(runtimeDir))
-            {
-                return null;
-            }
-
-            var direct = System.IO.Path.Combine(runtimeDir, assemblyName + ".dll");
-            if (System.IO.File.Exists(direct))
-            {
-                return direct;
-            }
-
-            var dotnetRoot = System.IO.Path.GetDirectoryName(System.IO.Path.GetDirectoryName(runtimeDir));
-            if (string.IsNullOrWhiteSpace(dotnetRoot))
-            {
-                return null;
-            }
-
-            var sharedDir = System.IO.Path.Combine(dotnetRoot, "shared");
-            if (!System.IO.Directory.Exists(sharedDir))
-            {
-                return null;
-            }
-
-            foreach (var frameworkDir in System.IO.Directory.GetDirectories(sharedDir))
-            {
-                var versions = System.IO.Directory.GetDirectories(frameworkDir);
-                Array.Sort(versions);
-                Array.Reverse(versions);
-
-                foreach (var versionDir in versions)
-                {
-                    var candidate = System.IO.Path.Combine(versionDir, assemblyName + ".dll");
-                    if (System.IO.File.Exists(candidate))
+                    var reader = module.GetMetadataReader();
+                    var names = ExtractMemberNames(reader, fullTypeName, includePublicMembers);
+                    if (names is not null && names.Count > 0)
                     {
-                        return candidate;
+                        return names;
                     }
                 }
+
+                continue;
             }
 
-            return null;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-#pragma warning restore RS1035
-
-    private static HashSet<string> ExtractNonPublicMemberNames(Type type)
-    {
-        var names = new HashSet<string>(StringComparer.Ordinal);
-
-        foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic))
-        {
-            AddIfRelevant(field.Name, names);
-        }
-
-        foreach (var property in type.GetProperties(BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic))
-        {
-            AddIfRelevant(property.Name, names);
-        }
-
-        foreach (var @event in type.GetEvents(BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic))
-        {
-            AddIfRelevant(@event.Name, names);
-        }
-
-        foreach (var method in type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic))
-        {
-            if (!method.IsSpecialName)
+            if (metadata is ModuleMetadata moduleMetadata)
             {
-                AddIfRelevant(method.Name, names);
+                var reader = moduleMetadata.GetMetadataReader();
+                var names = ExtractMemberNames(reader, fullTypeName, includePublicMembers);
+                if (names is not null && names.Count > 0)
+                {
+                    return names;
+                }
             }
         }
 
-        return names;
-
-        static void AddIfRelevant(string name, HashSet<string> set)
-        {
-            if (!name.StartsWith("<", StringComparison.Ordinal))
-            {
-                set.Add(name);
-            }
-        }
+        return null;
     }
 
-    private static HashSet<string>? ExtractNonPublicMemberNames(MetadataReader reader, string fullTypeName)
+    private static HashSet<string>? ExtractMemberNames(
+        MetadataReader reader,
+        string fullTypeName,
+        bool includePublicMembers)
     {
         try
         {
@@ -666,7 +564,7 @@ internal sealed class NameofGenerator : IIncrementalGenerator
                 foreach (var fieldHandle in typeDef.GetFields())
                 {
                     var field = reader.GetFieldDefinition(fieldHandle);
-                    if ((field.Attributes & FieldAttributes.FieldAccessMask) == FieldAttributes.Public)
+                    if (!includePublicMembers && (field.Attributes & FieldAttributes.FieldAccessMask) == FieldAttributes.Public)
                     {
                         continue;
                     }
@@ -686,7 +584,7 @@ internal sealed class NameofGenerator : IIncrementalGenerator
                         continue;
                     }
 
-                    if ((method.Attributes & MethodAttributes.MemberAccessMask) == MethodAttributes.Public)
+                    if (!includePublicMembers && (method.Attributes & MethodAttributes.MemberAccessMask) == MethodAttributes.Public)
                     {
                         continue;
                     }
@@ -707,10 +605,13 @@ internal sealed class NameofGenerator : IIncrementalGenerator
                         continue;
                     }
 
-                    var accessors = property.GetAccessors();
-                    if (IsAnyAccessorPublic(reader, accessors.Getter, accessors.Setter))
+                    if (!includePublicMembers)
                     {
-                        continue;
+                        var accessors = property.GetAccessors();
+                        if (IsAnyAccessorPublic(reader, accessors.Getter, accessors.Setter))
+                        {
+                            continue;
+                        }
                     }
 
                     result.Add(propertyName);
@@ -725,10 +626,13 @@ internal sealed class NameofGenerator : IIncrementalGenerator
                         continue;
                     }
 
-                    var accessors = @event.GetAccessors();
-                    if (IsAnyAccessorPublic(reader, accessors.Adder, accessors.Remover))
+                    if (!includePublicMembers)
                     {
-                        continue;
+                        var accessors = @event.GetAccessors();
+                        if (IsAnyAccessorPublic(reader, accessors.Adder, accessors.Remover))
+                        {
+                            continue;
+                        }
                     }
 
                     result.Add(eventName);
@@ -754,6 +658,178 @@ internal sealed class NameofGenerator : IIncrementalGenerator
     {
         var method = reader.GetMethodDefinition(methodHandle);
         return (method.Attributes & MethodAttributes.MemberAccessMask) == MethodAttributes.Public;
+    }
+
+#pragma warning disable RS1035
+    private static HashSet<string>? TryExtractMemberNamesFromRuntimeResolution(
+        string fullTypeName,
+        INamedTypeSymbol assemblyOfType,
+        bool includePublicMembers)
+    {
+        try
+        {
+            var assemblyName = assemblyOfType.ContainingAssembly.Identity.Name;
+            var assemblyOfFullName = assemblyOfType
+                .ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                .Replace("global::", string.Empty);
+
+            var whereRuntimeType =
+                Type.GetType($"{assemblyOfFullName}, {assemblyName}", throwOnError: false) ??
+                TryLoadAssemblyByName(assemblyName)?.GetType(assemblyOfFullName, throwOnError: false);
+
+            var targetAssembly = whereRuntimeType?.Assembly ?? TryLoadAssemblyByName(assemblyName);
+            var resolved = targetAssembly?.GetType(fullTypeName, throwOnError: false);
+
+            return resolved is null ? null : ExtractMemberNames(resolved, includePublicMembers);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static HashSet<string>? TryExtractMemberNamesFromRuntimeResolution(
+        Compilation compilation,
+        string fullTypeName,
+        string assemblyName,
+        bool includePublicMembers)
+    {
+        try
+        {
+            var assembly = TryLoadAssemblyByName(assemblyName) ?? TryLoadAssemblyFromReferences(compilation, assemblyName);
+            var resolved = assembly?.GetType(fullTypeName, throwOnError: false);
+
+            return resolved is null ? null : ExtractMemberNames(resolved, includePublicMembers);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static Assembly? TryLoadAssemblyByName(string assemblyName)
+    {
+        var loaded = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => string.Equals(a.GetName().Name, assemblyName, StringComparison.Ordinal));
+
+        if (loaded is not null)
+        {
+            return loaded;
+        }
+
+        try
+        {
+            return Assembly.Load(assemblyName);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static Assembly? TryLoadAssemblyFromReferences(Compilation compilation, string assemblyName)
+    {
+        foreach (var reference in compilation.References)
+        {
+            if (reference is not PortableExecutableReference peReference)
+            {
+                continue;
+            }
+
+            if (compilation.GetAssemblyOrModuleSymbol(reference) is not IAssemblySymbol assemblySymbol)
+            {
+                continue;
+            }
+
+            if (!string.Equals(assemblySymbol.Identity.Name, assemblyName, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var path = peReference.FilePath;
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                continue;
+            }
+
+            try
+            {
+                return Assembly.LoadFrom(path);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    private static HashSet<string>? TryGetMemberNamesViaReflection(INamedTypeSymbol typeSymbol, bool includePublicMembers)
+    {
+        try
+        {
+            var fullTypeName = typeSymbol
+                .ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                .Replace("global::", string.Empty);
+
+            var assemblyName = typeSymbol.ContainingAssembly.Identity.Name;
+
+            var runtimeType =
+                Type.GetType($"{fullTypeName}, {assemblyName}", throwOnError: false) ??
+                TryLoadAssemblyByName(assemblyName)?.GetType(fullTypeName, throwOnError: false);
+
+            return runtimeType is null ? null : ExtractMemberNames(runtimeType, includePublicMembers);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+#pragma warning restore RS1035
+
+    private static HashSet<string> ExtractMemberNames(Type type, bool includePublicMembers)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+
+        var visibility = includePublicMembers
+            ? BindingFlags.Public | BindingFlags.NonPublic
+            : BindingFlags.NonPublic;
+
+        var flags = BindingFlags.Instance | BindingFlags.Static | visibility;
+
+        foreach (var field in type.GetFields(flags))
+        {
+            AddIfRelevant(field.Name, names);
+        }
+
+        foreach (var property in type.GetProperties(flags))
+        {
+            AddIfRelevant(property.Name, names);
+        }
+
+        foreach (var @event in type.GetEvents(flags))
+        {
+            AddIfRelevant(@event.Name, names);
+        }
+
+        foreach (var method in type.GetMethods(flags))
+        {
+            if (!method.IsSpecialName)
+            {
+                AddIfRelevant(method.Name, names);
+            }
+        }
+
+        return names;
+
+        static void AddIfRelevant(string name, HashSet<string> set)
+        {
+            if (!name.StartsWith("<", StringComparison.Ordinal))
+            {
+                set.Add(name);
+            }
+        }
     }
 
     private static IReadOnlyList<(string Identifier, string Value)> BuildMemberMap(IEnumerable<string> memberNames)
@@ -877,8 +953,13 @@ internal sealed class NameofGenerator : IIncrementalGenerator
 
     private sealed class CodeWriter
     {
-        private readonly StringBuilder _builder = new();
+        private readonly StringBuilder _builder;
         private int _indent;
+
+        public CodeWriter()
+        {
+            _builder = new StringBuilder();
+        }
 
         public void Line()
         {
@@ -929,7 +1010,8 @@ namespace Nameof
     internal sealed class GenerateNameofAttribute : global::System.Attribute
     {
         public GenerateNameofAttribute(global::System.Type type) { }
-        public GenerateNameofAttribute(string fullTypeName, global::System.Type inAssemblyOf) { }
+        public GenerateNameofAttribute(string fullTypeName, global::System.Type assemblyOf) { }
+        public GenerateNameofAttribute(string fullTypeName, string assemblyName) { }
     }
 
     [global::System.AttributeUsage(global::System.AttributeTargets.Assembly, AllowMultiple = true)]
