@@ -1,3 +1,6 @@
+> [!Warning]
+> This library is in EXPERIMENT status
+
 # Nameof
 
 A C# source generator that extends the built-in `nameof` operator to support non-accessible types and members from current and referenced assemblies.
