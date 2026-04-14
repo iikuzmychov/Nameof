@@ -22,10 +22,10 @@ jobs:
           global-json-file: global.json
 
       - name: Restore dependencies
-        run: dotnet restore Nameof.slnx
+        run: dotnet restore WildDotNet.Nameof.slnx
 
       - name: Build solution
-        run: dotnet build Nameof.slnx --configuration Release --no-restore
+        run: dotnet build WildDotNet.Nameof.slnx --configuration Release --no-restore
 
       - name: Run tests
-        run: dotnet test Nameof.slnx --configuration Release --no-build
+        run: dotnet test WildDotNet.Nameof.slnx --configuration Release --no-build
