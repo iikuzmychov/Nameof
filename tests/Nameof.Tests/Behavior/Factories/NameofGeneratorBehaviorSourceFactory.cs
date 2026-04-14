@@ -52,7 +52,7 @@ internal static class NameofGeneratorBehaviorSourceFactory
         };
 
         var internalVisibleToDeclaration = accessType is AccessType.Internal
-            ? @$"[assembly: System.Runtime.CompilerServices.InternalsVisibleTo(""{typeName}.Tests"")]"
+            ? """[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("GeneratorTests")]"""
             : string.Empty;
 
         var anchorDeclaration = includeAnchor

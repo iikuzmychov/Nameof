@@ -31,12 +31,11 @@ internal sealed class CurrentCompilationMemberResolver : ITypeMemberResolver
             return null;
         }
 
-        var includePublicMembers = type.DeclaredAccessibility != Accessibility.Public;
-        var memberNames = ExtractMemberNames(type, includePublicMembers);
+        var memberNames = ExtractMemberNames(type, compilation);
         return NameofSourceEmitter.CreateResolvedSymbolType(type, memberNames);
     }
 
-    private static HashSet<string> ExtractMemberNames(INamedTypeSymbol type, bool includePublicMembers)
+    private static HashSet<string> ExtractMemberNames(INamedTypeSymbol type, Compilation compilation)
     {
         var names = new HashSet<string>(System.StringComparer.Ordinal);
 
@@ -47,7 +46,7 @@ internal sealed class CurrentCompilationMemberResolver : ITypeMemberResolver
                 continue;
             }
 
-            if (!includePublicMembers && member.DeclaredAccessibility == Accessibility.Public)
+            if (IsDirectlyAccessible(member, compilation))
             {
                 continue;
             }
@@ -68,5 +67,10 @@ internal sealed class CurrentCompilationMemberResolver : ITypeMemberResolver
         }
 
         return names;
+    }
+
+    private static bool IsDirectlyAccessible(ISymbol member, Compilation compilation)
+    {
+        return compilation.IsSymbolAccessibleWithin(member, compilation.Assembly);
     }
 }

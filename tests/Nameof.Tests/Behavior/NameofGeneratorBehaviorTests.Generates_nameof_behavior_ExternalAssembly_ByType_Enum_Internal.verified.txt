@@ -31,32 +31,6 @@ namespace Nameof
         public GenerateNameofAttribute(string fullTypeName, string assemblyName) { }
     }
 }
-    },
-    {
-      HintName: Nameof.ExternalFixtures_ByTypeEnumInternal.g.cs,
-      Source:
-#nullable enable
-
-namespace ExternalFixtures
-{
-    [global::Microsoft.CodeAnalysis.Embedded]
-    internal sealed class ByTypeEnumInternal
-    {
-        private ByTypeEnumInternal() { }
-    }
-
-    [global::Microsoft.CodeAnalysis.Embedded]
-    internal static class Nameof_ExternalFixtures_ByTypeEnumInternal
-    {
-        extension(global::Nameof.nameof<global::ExternalFixtures.ByTypeEnumInternal>)
-        {
-            public static string First => "First";
-            public static string Second => "Second";
-            public static string value__ => "value__";
-        }
-    }
-}
-
     }
   ]
 }

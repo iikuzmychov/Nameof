@@ -25,7 +25,6 @@ internal sealed class ExternalReflectionMemberResolver : ITypeMemberResolver
     {
         if (request.Symbol is not null)
         {
-            var includePublicMembers = request.Symbol.DeclaredAccessibility != Accessibility.Public;
             var fullTypeName = request.Symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).Replace("global::", string.Empty);
             var assemblyName = request.Symbol.ContainingAssembly.Identity.Name;
 
@@ -39,7 +38,10 @@ internal sealed class ExternalReflectionMemberResolver : ITypeMemberResolver
                 ? null
                 : NameofSourceEmitter.CreateResolvedSymbolType(
                     request.Symbol,
-                    ExtractMemberNames(runtimeType, includePublicMembers, declaredOnly: true));
+                    FilterMemberNames(
+                        request.Symbol,
+                        ExtractMemberNames(runtimeType, includePublicMembers: true, declaredOnly: true),
+                        compilation));
         }
 
         if (request.FullTypeName is null)
@@ -60,12 +62,16 @@ internal sealed class ExternalReflectionMemberResolver : ITypeMemberResolver
 
             var targetAssembly = whereRuntimeType?.Assembly ?? TryLoadAssemblyByName(assemblyName);
             var resolved = targetAssembly?.GetType(request.FullTypeName, throwOnError: false);
+            var symbol = compilation.GetTypeByMetadataName(request.FullTypeName);
 
             return resolved is null
                 ? null
                 : CreateResolvedFullTypeRequest(
                     resolved,
-                    ExtractMemberNames(resolved, includePublicMembers: true, declaredOnly: false));
+                    FilterMemberNames(
+                        symbol,
+                        ExtractMemberNames(resolved, includePublicMembers: true, declaredOnly: false),
+                        compilation));
         }
 
         if (request.AssemblyName is null)
@@ -89,7 +95,10 @@ internal sealed class ExternalReflectionMemberResolver : ITypeMemberResolver
             ? null
             : CreateResolvedFullTypeRequest(
                 type,
-                ExtractMemberNames(type, includePublicMembers: true, declaredOnly: false));
+                FilterMemberNames(
+                    compilation.GetTypeByMetadataName(request.FullTypeName),
+                    ExtractMemberNames(type, includePublicMembers: true, declaredOnly: false),
+                    compilation));
     }
 
 #pragma warning disable RS1035
@@ -223,6 +232,62 @@ internal sealed class ExternalReflectionMemberResolver : ITypeMemberResolver
         }
 
         return names;
+    }
+
+    private static HashSet<string> FilterMemberNames(
+        INamedTypeSymbol? typeSymbol,
+        HashSet<string> memberNames,
+        Compilation compilation)
+    {
+        FilterReflectionOnlyArtifacts(memberNames);
+
+        if (typeSymbol is null)
+        {
+            return memberNames;
+        }
+
+        foreach (var member in typeSymbol.GetMembers())
+        {
+            if (member.IsImplicitlyDeclared)
+            {
+                continue;
+            }
+
+            var name = member switch
+            {
+                IFieldSymbol field when field.AssociatedSymbol is null => field.Name,
+                IPropertySymbol property => property.Name,
+                IEventSymbol @event => @event.Name,
+                IMethodSymbol method when method.MethodKind == MethodKind.Ordinary => method.Name,
+                _ => null
+            };
+
+            if (name is null)
+            {
+                continue;
+            }
+
+            if (compilation.IsSymbolAccessibleWithin(member, compilation.Assembly))
+            {
+                memberNames.Remove(name);
+            }
+        }
+
+        return memberNames;
+    }
+
+    private static HashSet<string> FilterReflectionOnlyArtifacts(HashSet<string> memberNames)
+    {
+        memberNames.Remove("value__");
+        memberNames.RemoveWhere(static name =>
+            name.StartsWith("<", StringComparison.Ordinal) ||
+            name.StartsWith("get_", StringComparison.Ordinal) ||
+            name.StartsWith("set_", StringComparison.Ordinal) ||
+            name.StartsWith("add_", StringComparison.Ordinal) ||
+            name.StartsWith("remove_", StringComparison.Ordinal) ||
+            name is ".ctor" or ".cctor");
+
+        return memberNames;
     }
 
     private static void AddIfRelevant(string name, HashSet<string> names)

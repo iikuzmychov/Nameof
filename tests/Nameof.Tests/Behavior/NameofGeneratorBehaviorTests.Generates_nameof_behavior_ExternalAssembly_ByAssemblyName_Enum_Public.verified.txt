@@ -77,7 +77,6 @@ namespace ExternalFixtures
             public static string System_IConvertible_ToUInt64 => "System.IConvertible.ToUInt64";
             public static string System_ISpanFormattable_TryFormat => "System.ISpanFormattable.TryFormat";
             public static string ToString => "ToString";
-            public static string value__ => "value__";
         }
     }
 }

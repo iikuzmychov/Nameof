@@ -50,9 +50,6 @@ namespace ExternalFixtures
     {
         extension(global::Nameof.nameof<global::ExternalFixtures.ByTypeClassInternal>)
         {
-            public static string InternalEvent => "InternalEvent";
-            public static string InternalMethod => "InternalMethod";
-            public static string InternalProperty => "InternalProperty";
             public static string PrivateEvent => "PrivateEvent";
             public static string PrivateMethod => "PrivateMethod";
             public static string PrivateProperty => "PrivateProperty";
@@ -60,20 +57,11 @@ namespace ExternalFixtures
             public static string PrivateProtectedMethod => "PrivateProtectedMethod";
             public static string PrivateProtectedProperty => "PrivateProtectedProperty";
             public static string ProtectedEvent => "ProtectedEvent";
-            public static string ProtectedInternalEvent => "ProtectedInternalEvent";
-            public static string ProtectedInternalMethod => "ProtectedInternalMethod";
-            public static string ProtectedInternalProperty => "ProtectedInternalProperty";
             public static string ProtectedMethod => "ProtectedMethod";
             public static string ProtectedProperty => "ProtectedProperty";
-            public static string PublicEvent => "PublicEvent";
-            public static string PublicMethod => "PublicMethod";
-            public static string PublicProperty => "PublicProperty";
-            public static string _internalField => "_internalField";
             public static string _privateField => "_privateField";
             public static string _privateProtectedField => "_privateProtectedField";
             public static string _protectedField => "_protectedField";
-            public static string _protectedInternalField => "_protectedInternalField";
-            public static string _publicField => "_publicField";
         }
     }
 }
