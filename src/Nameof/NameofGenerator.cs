@@ -19,7 +19,7 @@ internal sealed class NameofGenerator : IIncrementalGenerator
     private static readonly DiagnosticDescriptor UnsupportedFullTypeNameDescriptor = new(
         id: "NAMEOF001",
         title: "Unsupported full type name",
-        messageFormat: "GenerateNameof(\"{0}\") is not supported. Only non-generic, non-nested full type names are supported (example: \"Namespace.Type\").",
+        messageFormat: @"GenerateNameof(""{0}"") is not supported. Only non-generic, non-nested full type names are supported (example: ""Namespace.Type"").",
         category: "NameofGenerator",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
@@ -27,7 +27,7 @@ internal sealed class NameofGenerator : IIncrementalGenerator
     private static readonly DiagnosticDescriptor ResolutionFailedUsingAssemblyOfDescriptor = new(
         id: "NAMEOF002",
         title: "Type resolution failed",
-        messageFormat: "Could not resolve type \"{0}\" using assemblyOf \"{1}\". No members were generated.",
+        messageFormat: @"Could not resolve type ""{0}"" using assemblyOf ""{1}"". No members were generated.",
         category: "NameofGenerator",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
@@ -35,7 +35,7 @@ internal sealed class NameofGenerator : IIncrementalGenerator
     private static readonly DiagnosticDescriptor ResolutionFailedUsingAssemblyNameDescriptor = new(
         id: "NAMEOF003",
         title: "Type resolution failed",
-        messageFormat: "Could not resolve type \"{0}\" using assemblyName \"{1}\". No members were generated.",
+        messageFormat: @"Could not resolve type ""{0}"" using assemblyName ""{1}"". No members were generated.",
         category: "NameofGenerator",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
