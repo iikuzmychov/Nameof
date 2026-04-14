@@ -9,7 +9,7 @@ namespace Nameof.Tests;
 public class NameofGeneratorBehaviorTests
 {
     [Fact]
-    public Task Generates_members_for_current_assembly_struct()
+    public Task Generates_nameof_for_current_assembly_internal_struct()
     {
         var source =
             """
@@ -30,7 +30,7 @@ public class NameofGeneratorBehaviorTests
     }
 
     [Fact]
-    public Task Generates_members_for_current_assembly_interface()
+    public Task Generates_nameof_for_current_assembly_internal_interface()
     {
         var source =
             """
@@ -51,7 +51,7 @@ public class NameofGeneratorBehaviorTests
     }
 
     [Fact]
-    public Task Generates_members_for_current_assembly_internal_type()
+    public Task Generates_nameof_for_current_assembly_internal_class()
     {
         const string source =
             """
@@ -73,7 +73,7 @@ public class NameofGeneratorBehaviorTests
     }
 
     [Fact]
-    public Task Generates_members_for_external_public_type_private_fields()
+    public Task Generates_nameof_for_external_assembly_public_class_with_private_fields()
     {
         const string source =
             """
@@ -89,7 +89,7 @@ public class NameofGeneratorBehaviorTests
     }
 
     [Fact]
-    public Task Generates_stub_and_members_for_external_non_public_type_using_assembly_of()
+    public Task Generates_nameof_for_external_assembly_internal_class_using_assembly_of()
     {
         const string source =
             """
@@ -105,7 +105,7 @@ public class NameofGeneratorBehaviorTests
     }
 
     [Fact]
-    public Task Generates_members_for_external_non_public_type_using_assembly_name()
+    public Task Generates_nameof_for_external_assembly_internal_class_using_assembly_name()
     {
         const string source =
             """
@@ -120,7 +120,7 @@ public class NameofGeneratorBehaviorTests
     }
 
     [Fact]
-    public Task Generates_embedded_enum_stub_for_external_full_type_name()
+    public Task Generates_nameof_for_external_assembly_internal_enum_using_assembly_name()
     {
         var targetFixture = CreateExternalReferenceAssembly(
             assemblyName: "Task3.ExternalEnumFixture",
@@ -159,7 +159,7 @@ public class NameofGeneratorBehaviorTests
     }
 
     [Fact]
-    public Task Generates_embedded_struct_stub_for_external_full_type_name()
+    public Task Generates_nameof_for_external_assembly_internal_struct_using_assembly_name()
     {
         var targetFixture = CreateExternalReferenceAssembly(
             assemblyName: "Task3.ExternalStructFixture",
@@ -198,7 +198,7 @@ public class NameofGeneratorBehaviorTests
     }
 
     [Fact]
-    public Task Generates_embedded_interface_stub_for_external_full_type_name()
+    public Task Generates_nameof_for_external_assembly_internal_interface_using_assembly_of()
     {
         var targetFixture = CreateExternalReferenceAssembly(
             assemblyName: "Task3.ExternalInterfaceFixture",
