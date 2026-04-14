@@ -39,31 +39,17 @@ namespace Nameof
 }
     },
     {
-      HintName: Nameof.Nameof_NameofGenerator.g.cs,
+      HintName: Nameof.CurrentAssemblyInternalEnum.g.cs,
       Source:
 #nullable enable
 
-namespace Nameof
+[global::Microsoft.CodeAnalysis.Embedded]
+internal static class Nameof_CurrentAssemblyInternalEnum
 {
-    [global::Microsoft.CodeAnalysis.Embedded]
-    internal sealed class NameofGenerator
+    extension(global::Nameof.nameof<global::CurrentAssemblyInternalEnum>)
     {
-        private NameofGenerator() { }
-    }
-
-    [global::Microsoft.CodeAnalysis.Embedded]
-    internal static class Nameof_Nameof_NameofGenerator
-    {
-        extension(global::Nameof.nameof<global::Nameof.NameofGenerator>)
-        {
-            public static string Initialize => "Initialize";
-            public static string IsSupportedFullTypeName => "IsSupportedFullTypeName";
-            public static string ResolutionFailedUsingAssemblyNameDescriptor => "ResolutionFailedUsingAssemblyNameDescriptor";
-            public static string ResolutionFailedUsingAssemblyOfDescriptor => "ResolutionFailedUsingAssemblyOfDescriptor";
-            public static string ResolveRequest => "ResolveRequest";
-            public static string UnsupportedFullTypeNameDescriptor => "UnsupportedFullTypeNameDescriptor";
-            public static string WithAllMetadata => "WithAllMetadata";
-        }
+        public static string First => "First";
+        public static string Second => "Second";
     }
 }
 

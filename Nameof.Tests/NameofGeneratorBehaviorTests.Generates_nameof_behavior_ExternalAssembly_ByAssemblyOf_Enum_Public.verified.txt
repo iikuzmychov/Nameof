@@ -39,21 +39,21 @@ namespace Nameof
 }
     },
     {
-      HintName: Nameof.name_Task3_ExternalEnumFixture_ExternalFixtures_HiddenEnum.g.cs,
+      HintName: Nameof.type_Behavior_External_ByAssemblyOf_Enum_Public_ExternalFixtures_ByAssemblyOfEnumPublic.g.cs,
       Source:
 #nullable enable
 
 namespace ExternalFixtures
 {
     [global::Microsoft.CodeAnalysis.Embedded]
-    internal enum HiddenEnum
+    internal enum ByAssemblyOfEnumPublic
     {
     }
 
     [global::Microsoft.CodeAnalysis.Embedded]
-    internal static class Nameof_ExternalFixtures_HiddenEnum
+    internal static class Nameof_ExternalFixtures_ByAssemblyOfEnumPublic
     {
-        extension(global::Nameof.nameof<global::ExternalFixtures.HiddenEnum>)
+        extension(global::Nameof.nameof<global::ExternalFixtures.ByAssemblyOfEnumPublic>)
         {
             public static string CompareTo => "CompareTo";
             public static string Equals => "Equals";

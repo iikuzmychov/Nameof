@@ -39,18 +39,17 @@ namespace Nameof
 }
     },
     {
-      HintName: Nameof.SomeType.g.cs,
+      HintName: Nameof.CurrentAssemblyInternalEnum.g.cs,
       Source:
 #nullable enable
 
 [global::Microsoft.CodeAnalysis.Embedded]
-internal static class Nameof_SomeType
+internal static class Nameof_CurrentAssemblyInternalEnum
 {
-    extension(global::Nameof.nameof<global::SomeType>)
+    extension(global::Nameof.nameof<global::CurrentAssemblyInternalEnum>)
     {
-        public static string SomeMethod => "SomeMethod";
-        public static string SomeProperty => "SomeProperty";
-        public static string _someField => "_someField";
+        public static string First => "First";
+        public static string Second => "Second";
     }
 }
 

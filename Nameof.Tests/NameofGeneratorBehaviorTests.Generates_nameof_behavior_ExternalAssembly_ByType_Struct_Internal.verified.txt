@@ -39,17 +39,36 @@ namespace Nameof
 }
     },
     {
-      HintName: Nameof.ISomeContract.g.cs,
+      HintName: Nameof.ExternalFixtures_ByTypeStructInternal.g.cs,
       Source:
 #nullable enable
 
-[global::Microsoft.CodeAnalysis.Embedded]
-internal static class Nameof_ISomeContract
+namespace ExternalFixtures
 {
-    extension(global::Nameof.nameof<global::ISomeContract>)
+    [global::Microsoft.CodeAnalysis.Embedded]
+    internal sealed class ByTypeStructInternal
     {
-        public static string Count => "Count";
-        public static string Execute => "Execute";
+        private ByTypeStructInternal() { }
+    }
+
+    [global::Microsoft.CodeAnalysis.Embedded]
+    internal static class Nameof_ExternalFixtures_ByTypeStructInternal
+    {
+        extension(global::Nameof.nameof<global::ExternalFixtures.ByTypeStructInternal>)
+        {
+            public static string InternalEvent => "InternalEvent";
+            public static string InternalMethod => "InternalMethod";
+            public static string InternalProperty => "InternalProperty";
+            public static string PrivateEvent => "PrivateEvent";
+            public static string PrivateMethod => "PrivateMethod";
+            public static string PrivateProperty => "PrivateProperty";
+            public static string PublicEvent => "PublicEvent";
+            public static string PublicMethod => "PublicMethod";
+            public static string PublicProperty => "PublicProperty";
+            public static string _internalField => "_internalField";
+            public static string _privateField => "_privateField";
+            public static string _publicField => "_publicField";
+        }
     }
 }
 

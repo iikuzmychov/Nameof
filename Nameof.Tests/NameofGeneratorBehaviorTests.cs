@@ -8,237 +8,188 @@ namespace Nameof.Tests;
 
 public class NameofGeneratorBehaviorTests
 {
-    [Fact]
-    public Task Generates_nameof_for_current_assembly_internal_struct()
+    [Theory]
+    [CombinatorialData]
+    public Task Generates_nameof_behavior(
+        AssemblyType assemblyType,
+        LookupKind lookupKind,
+        DeclarationType declarationType,
+        AccessType accessType)
     {
-        var source =
-            """
-            using Nameof;
+        var testCase = BuildBehaviorCase(assemblyType, lookupKind, declarationType, accessType);
+        var result = GeneratorTestDriver.Run(testCase.Source, testCase.References);
 
-            [assembly: GenerateNameof(typeof(SomeStruct))]
-
-            internal struct SomeStruct
-            {
-                private int _value;
-                private void Reset() { }
-            }
-            """;
-
-        var result = GeneratorTestDriver.Run(source);
-
-        return Verify(result.ToSnapshot());
+        return Verify(result.ToSnapshot()).UseTextForParameters(testCase.SnapshotName);
     }
 
-    [Fact]
-    public Task Generates_nameof_for_current_assembly_internal_interface()
+    private static BehaviorCase BuildBehaviorCase(
+        AssemblyType assemblyType,
+        LookupKind lookupKind,
+        DeclarationType declarationType,
+        AccessType accessType)
     {
-        var source =
-            """
-            using Nameof;
+        var snapshotName = $"{assemblyType}_{lookupKind}_{declarationType}_{accessType}";
 
-            [assembly: GenerateNameof(typeof(ISomeContract))]
+        return (assemblyType, lookupKind) switch
+        {
+            (AssemblyType.CurrentAssembly, LookupKind.ByType)
+                => BuildCurrentAssemblyCase(snapshotName, LookupKind.ByType, declarationType, accessType),
 
-            internal interface ISomeContract
-            {
-                int Count { get; }
-                void Execute();
-            }
-            """;
+            (AssemblyType.CurrentAssembly, LookupKind.ByAssemblyName)
+                => BuildCurrentAssemblyCase(snapshotName, LookupKind.ByAssemblyName, declarationType, accessType),
 
-        var result = GeneratorTestDriver.Run(source);
+            (AssemblyType.CurrentAssembly, LookupKind.ByAssemblyOf)
+                => BuildCurrentAssemblyCase(snapshotName, LookupKind.ByAssemblyOf, declarationType, accessType),
 
-        return Verify(result.ToSnapshot());
+            (AssemblyType.ExternalAssembly, LookupKind.ByType)
+                => BuildExternalAssemblyByTypeCase(snapshotName, declarationType, accessType),
+
+            (AssemblyType.ExternalAssembly, LookupKind.ByAssemblyName)
+                => BuildExternalAssemblyByAssemblyNameCase(snapshotName, declarationType, accessType),
+
+            (AssemblyType.ExternalAssembly, LookupKind.ByAssemblyOf)
+                => BuildExternalAssemblyByAssemblyOfCase(snapshotName, declarationType, accessType),
+
+            _ => throw new ArgumentOutOfRangeException(nameof(lookupKind)),
+        };
     }
 
-    [Fact]
-    public Task Generates_nameof_for_current_assembly_internal_class()
+    private static BehaviorCase BuildCurrentAssemblyCase(
+        string snapshotName,
+        LookupKind lookupKind,
+        DeclarationType declarationType,
+        AccessType accessType)
     {
-        const string source =
-            """
-            using Nameof;
-
-            [assembly: GenerateNameof(typeof(SomeType))]
-
-            internal class SomeType
-            {
-                private int _someField;
-                private void SomeMethod() { }
-                private string SomeProperty { get; set; } = "";
-            }
-            """;
-
-        var result = GeneratorTestDriver.Run(source);
-
-        return Verify(result.ToSnapshot());
+        return CreateBehaviorCase(snapshotName, CreateCurrentAssemblySource(lookupKind, declarationType, accessType));
     }
 
-    [Fact]
-    public Task Generates_nameof_for_external_assembly_public_class_with_private_fields()
+    private static BehaviorCase BuildExternalAssemblyByTypeCase(
+        string snapshotName,
+        DeclarationType declarationType,
+        AccessType accessType)
     {
-        const string source =
-            """
-            using System;
-            using Nameof;
+        var fixtureName = $"ByType{declarationType}{accessType}";
+        var metadataName = $"ExternalFixtures.{fixtureName}";
 
-            [assembly: GenerateNameof<ConsoleKeyInfo>]
-            """;
-
-        var result = GeneratorTestDriver.Run(source);
-
-        return Verify(result.ToSnapshot());
-    }
-
-    [Fact]
-    public Task Generates_nameof_for_external_assembly_internal_class_using_assembly_of()
-    {
-        const string source =
-            """
-            using System;
-            using Nameof;
-
-            [assembly: GenerateNameof("System.IO.ConsoleStream", assemblyOf: typeof(Console))]
-            """;
-
-        var result = GeneratorTestDriver.Run(source);
-
-        return Verify(result.ToSnapshot());
-    }
-
-    [Fact]
-    public Task Generates_nameof_for_external_assembly_internal_class_using_assembly_name()
-    {
-        const string source =
-            """
-            using Nameof;
-
-            [assembly: GenerateNameof("Nameof.NameofGenerator", assemblyName: "Nameof")]
-            """;
-
-        var result = GeneratorTestDriver.Run(source);
-
-        return Verify(result.ToSnapshot());
-    }
-
-    [Fact]
-    public Task Generates_nameof_for_external_assembly_internal_enum_using_assembly_name()
-    {
-        var targetFixture = CreateExternalReferenceAssembly(
-            assemblyName: "Task3.ExternalEnumFixture",
-            source:
-            """
-            namespace ExternalFixtures;
-
-            internal enum HiddenEnum
-            {
-                First,
-                Second
-            }
-            """);
-        var decoyFixture = CreateExternalReferenceAssembly(
-            assemblyName: "Task3.ExternalEnumFixture.Decoy",
-            source:
-            """
-            namespace ExternalFixtures;
-
-            internal sealed class HiddenEnum
-            {
-                internal const string Unexpected = "Unexpected";
-            }
-            """);
+        var fixture = CreateExternalFixture(
+            assemblyName: $"Behavior.External.ByType.{declarationType}.{accessType}",
+            declarationType,
+            accessType,
+            typeName: fixtureName);
 
         var source =
-            """
+            $$"""
             using Nameof;
 
-            [assembly: GenerateNameof("ExternalFixtures.HiddenEnum", assemblyName: "Task3.ExternalEnumFixture")]
+            [assembly: GenerateNameof<ExternalFixtures.{{fixtureName}}>]
             """;
 
-        var result = GeneratorTestDriver.Run(source, targetFixture.Reference, decoyFixture.Reference);
-
-        return Verify(result.ToSnapshot());
+        return CreateBehaviorCase(snapshotName, source, fixture.Reference);
     }
 
-    [Fact]
-    public Task Generates_nameof_for_external_assembly_internal_struct_using_assembly_name()
+    private static BehaviorCase BuildExternalAssemblyByAssemblyNameCase(
+        string snapshotName,
+        DeclarationType declarationType,
+        AccessType accessType)
     {
-        var targetFixture = CreateExternalReferenceAssembly(
-            assemblyName: "Task3.ExternalStructFixture",
-            source:
-            """
-            namespace ExternalFixtures;
+        var fixtureName = $"ByAssemblyName{declarationType}{accessType}";
 
-            internal struct HiddenStruct
-            {
-                internal int Value;
-                internal void Reset() { }
-            }
-            """);
-        var decoyFixture = CreateExternalReferenceAssembly(
-            assemblyName: "Task3.ExternalStructFixture.Decoy",
-            source:
-            """
-            namespace ExternalFixtures;
+        var assemblyName = $"Behavior.External.ByAssemblyName.{declarationType}.{accessType}";
 
-            internal sealed class HiddenStruct
-            {
-                internal static int Unexpected => 42;
-            }
-            """);
+        var fixture = CreateExternalFixture(
+            assemblyName,
+            declarationType,
+            accessType,
+            typeName: fixtureName);
+
+        var decoy = CreateDecoyFixture(
+            assemblyName: $"{assemblyName}.Decoy",
+            declarationType,
+            typeName: fixtureName);
 
         var source =
-            """
+            $$"""
             using Nameof;
 
-            [assembly: GenerateNameof("ExternalFixtures.HiddenStruct", assemblyName: "Task3.ExternalStructFixture")]
+            [assembly: GenerateNameof("ExternalFixtures.{{fixtureName}}", assemblyName: "{{assemblyName}}")]
             """;
 
-        var result = GeneratorTestDriver.Run(source, targetFixture.Reference, decoyFixture.Reference);
-
-        return Verify(result.ToSnapshot());
+        return CreateBehaviorCase(snapshotName, source, fixture.Reference, decoy);
     }
 
-    [Fact]
-    public Task Generates_nameof_for_external_assembly_internal_interface_using_assembly_of()
+    private static BehaviorCase BuildExternalAssemblyByAssemblyOfCase(
+        string snapshotName,
+        DeclarationType declarationType,
+        AccessType accessType)
     {
-        var targetFixture = CreateExternalReferenceAssembly(
-            assemblyName: "Task3.ExternalInterfaceFixture",
-            source:
-            """
-            namespace ExternalFixtures;
+        var fixtureName = $"ByAssemblyOf{declarationType}{accessType}";
+        var anchorName = $"ByAssemblyOf{declarationType}{accessType}Anchor";
+        var assemblyName = $"Behavior.External.ByAssemblyOf.{declarationType}.{accessType}";
 
-            internal interface IHiddenContract
-            {
-                int Count { get; }
-                void Execute();
-            }
+        var fixture = CreateExternalFixture(
+            assemblyName,
+            declarationType,
+            accessType,
+            typeName: fixtureName,
+            includeAnchor: true,
+            anchorTypeName: anchorName);
 
-            public sealed class InterfaceAssemblyAnchor;
-            """);
-        var decoyFixture = CreateExternalReferenceAssembly(
-            assemblyName: "Task3.ExternalInterfaceFixture.Decoy",
-            source:
-            """
-            namespace ExternalFixtures;
-
-            internal sealed class IHiddenContract
-            {
-                internal void Unexpected() { }
-            }
-            """);
+        var decoy = CreateDecoyFixture(
+            assemblyName: $"{assemblyName}.Decoy",
+            declarationType,
+            typeName: fixtureName);
 
         var source =
-            """
+            $$"""
             using Nameof;
 
-            [assembly: GenerateNameof("ExternalFixtures.IHiddenContract", assemblyOf: typeof(ExternalFixtures.InterfaceAssemblyAnchor))]
+            [assembly: GenerateNameof("ExternalFixtures.{{fixtureName}}", assemblyOf: typeof(ExternalFixtures.{{anchorName}}))]
             """;
 
-        var result = GeneratorTestDriver.Run(source, targetFixture.Reference, decoyFixture.Reference);
-
-        return Verify(result.ToSnapshot());
+        return CreateBehaviorCase(snapshotName, source, fixture.Reference, decoy);
     }
 
-    private static ExternalReferenceFixture CreateExternalReferenceAssembly(string assemblyName, string source)
+    private static BehaviorCase CreateBehaviorCase(
+        string snapshotName,
+        string source,
+        params MetadataReference[] references)
+    {
+        return new BehaviorCase(snapshotName, source, references);
+    }
+
+    public enum AssemblyType
+    {
+        CurrentAssembly,
+        ExternalAssembly,
+    }
+
+    public enum LookupKind
+    {
+        ByType,
+        ByAssemblyName,
+        ByAssemblyOf,
+    }
+
+    public enum DeclarationType
+    {
+        Class,
+        Struct,
+        Interface,
+        Enum,
+    }
+
+    public enum AccessType
+    {
+        Public,
+        Internal,
+    }
+
+    private sealed record BehaviorCase(
+        string SnapshotName,
+        string Source,
+        MetadataReference[] References);
+
+    private static MetadataReference CreateExternalReferenceAssembly(string assemblyName, string source)
     {
         var compilation = CSharpCompilation.Create(
             assemblyName,
@@ -248,6 +199,7 @@ public class NameofGeneratorBehaviorTests
 
         using var peStream = new MemoryStream();
         var emitResult = compilation.Emit(peStream);
+
         Assert.True(
             emitResult.Success,
             string.Join(Environment.NewLine, emitResult.Diagnostics.Select(static diagnostic => diagnostic.ToString())));
@@ -255,9 +207,282 @@ public class NameofGeneratorBehaviorTests
         var image = peStream.ToArray();
         Assembly.Load(image);
 
-        return new ExternalReferenceFixture(
-            MetadataReference.CreateFromImage(image),
-            assemblyName);
+        return MetadataReference.CreateFromImage(image);
+    }
+
+    private static ExternalFixture CreateExternalFixture(
+        string assemblyName,
+        DeclarationType declarationType,
+        AccessType accessType,
+        string typeName,
+        bool includeAnchor = false,
+        string? anchorTypeName = null)
+    {
+        var source = CreateExternalDeclarationAssemblySource(
+            declarationType,
+            accessType,
+            typeName,
+            includeAnchor,
+            anchorTypeName);
+
+        return new ExternalFixture(
+            Reference: CreateExternalReferenceAssembly(assemblyName, source),
+            TypeName: typeName,
+            AssemblyName: assemblyName);
+    }
+
+    private static MetadataReference CreateDecoyFixture(
+        string assemblyName,
+        DeclarationType declarationType,
+        string typeName)
+    {
+        var declaration = declarationType switch
+        {
+            DeclarationType.Class =>
+                $$"""
+                internal class {{typeName}}
+                {
+                    internal int Unexpected { get; }
+                }
+                """,
+
+            DeclarationType.Struct =>
+                $$"""
+                internal struct {{typeName}}
+                {
+                    internal int Unexpected { get; }
+                }
+                """,
+
+            DeclarationType.Interface =>
+                $$"""
+                internal interface {{typeName}}
+                {
+                    int Unexpected { get; }
+                }
+                """,
+
+            DeclarationType.Enum =>
+                $$"""
+                internal enum {{typeName}}
+                {
+                    Unexpected
+                }
+                """,
+
+            _ => throw new ArgumentOutOfRangeException(nameof(declarationType)),
+        };
+
+        var source =
+            $$"""
+            namespace ExternalFixtures;
+
+            {{declaration}}
+            """;
+
+        return CreateExternalReferenceAssembly(assemblyName, source);
+    }
+
+    private static string CreateCurrentAssemblySource(
+        LookupKind lookupKind,
+        DeclarationType declarationType,
+        AccessType accessType)
+    {
+        var typeName = $"CurrentAssembly{accessType}{declarationType}";
+        var anchorTypeName = $"{typeName}Anchor";
+
+        var visibility = accessType switch
+        {
+            AccessType.Public => "public",
+            AccessType.Internal => "internal",
+            _ => throw new ArgumentOutOfRangeException(nameof(accessType)),
+        };
+
+        var declaration = declarationType switch
+        {
+            DeclarationType.Class => CreateClassDeclaration(visibility, typeName),
+            DeclarationType.Struct => CreateStructDeclaration(visibility, typeName),
+            DeclarationType.Interface => CreateInterfaceDeclaration(visibility, typeName),
+            DeclarationType.Enum => CreateEnumDeclaration(visibility, typeName),
+            _ => throw new ArgumentOutOfRangeException(nameof(declarationType)),
+        };
+
+        return lookupKind switch
+        {
+            LookupKind.ByType => CreateCurrentAssemblyByTypeSource(typeName, declaration),
+            LookupKind.ByAssemblyName => CreateCurrentAssemblyByAssemblyNameSource(typeName, declaration),
+            LookupKind.ByAssemblyOf => CreateCurrentAssemblyByAssemblyOfSource(typeName, anchorTypeName, declaration),
+            _ => throw new ArgumentOutOfRangeException(nameof(lookupKind)),
+        };
+    }
+
+    private static string CreateExternalDeclarationAssemblySource(
+        DeclarationType declarationType,
+        AccessType accessType,
+        string typeName,
+        bool includeAnchor,
+        string? anchorTypeName)
+    {
+        var visibility = accessType switch
+        {
+            AccessType.Public => "public",
+            AccessType.Internal => "internal",
+            _ => throw new ArgumentOutOfRangeException(nameof(accessType)),
+        };
+
+        var internalVisibleToDeclaration = accessType is AccessType.Internal
+            ? @$"[assembly: System.Runtime.CompilerServices.InternalsVisibleTo(""{typeName}.Tests"")]"
+            : string.Empty;
+
+        var anchorDeclaration = includeAnchor
+            ? @$"public sealed class {anchorTypeName} {{ }}"
+            : string.Empty;
+
+        var declaration = declarationType switch
+        {
+            DeclarationType.Class => CreateClassDeclaration(visibility, typeName),
+            DeclarationType.Struct => CreateStructDeclaration(visibility, typeName),
+            DeclarationType.Interface => CreateInterfaceDeclaration(visibility, typeName),
+            DeclarationType.Enum => CreateEnumDeclaration(visibility, typeName),
+            _ => throw new ArgumentOutOfRangeException(nameof(declarationType)),
+        };
+
+        return
+            $$"""
+            {{internalVisibleToDeclaration}}
+
+            namespace ExternalFixtures;
+
+            {{anchorDeclaration}}
+
+            {{declaration}}
+            """;
+    }
+
+    private static string CreateCurrentAssemblyByTypeSource(string typeOfExpression, string declaration)
+    {
+        return $$"""
+        using Nameof;
+
+        [assembly: GenerateNameof(typeof({{typeOfExpression}}))]
+
+        {{declaration}}
+        """;
+    }
+
+    private static string CreateCurrentAssemblyByAssemblyNameSource(string typeName, string declaration)
+    {
+        return $$"""
+        using Nameof;
+
+        [assembly: GenerateNameof("{{typeName}}", assemblyName: "GeneratorTests")]
+
+        {{declaration}}
+        """;
+    }
+
+    private static string CreateCurrentAssemblyByAssemblyOfSource(
+        string typeName,
+        string anchorTypeName,
+        string declaration)
+    {
+        return $$"""
+        using Nameof;
+
+        [assembly: GenerateNameof("{{typeName}}", assemblyOf: typeof({{anchorTypeName}}))]
+
+        public sealed class {{anchorTypeName}};
+
+        {{declaration}}
+        """;
+    }
+
+    private static string CreateClassDeclaration(string visibility, string typeName)
+    {
+        return
+            $$"""
+            {{visibility}} class {{typeName}}
+            {
+                private int _privateField;
+                internal int _internalField;
+                protected int _protectedField;
+                protected internal int _protectedInternalField;
+                private protected int _privateProtectedField;
+                public int _publicField;
+
+                private int PrivateProperty { get; set; }
+                internal int InternalProperty { get; set; }
+                protected int ProtectedProperty { get; set; }
+                protected internal int ProtectedInternalProperty { get; set; }
+                private protected int PrivateProtectedProperty { get; set; }
+                public int PublicProperty { get; set; }
+
+                private event global::System.Action? PrivateEvent;
+                internal event global::System.Action? InternalEvent;
+                protected event global::System.Action? ProtectedEvent;
+                protected internal event global::System.Action? ProtectedInternalEvent;
+                private protected event global::System.Action? PrivateProtectedEvent;
+                public event global::System.Action? PublicEvent;
+
+                private void PrivateMethod() { }
+                internal void InternalMethod() { }
+                protected void ProtectedMethod() { }
+                protected internal void ProtectedInternalMethod() { }
+                private protected void PrivateProtectedMethod() { }
+                public void PublicMethod() { }
+            }
+            """;
+    }
+
+    private static string CreateStructDeclaration(string visibility, string typeName)
+    {
+        return
+            $$"""
+            {{visibility}} struct {{typeName}}
+            {
+                private int _privateField;
+                internal int _internalField;
+                public int _publicField;
+
+                private int PrivateProperty { get; set; }
+                internal int InternalProperty { get; set; }
+                public int PublicProperty { get; set; }
+
+                private event global::System.Action? PrivateEvent;
+                internal event global::System.Action? InternalEvent;
+                public event global::System.Action? PublicEvent;
+
+                private void PrivateMethod() { }
+                internal void InternalMethod() { }
+                public void PublicMethod() { }
+            }
+            """;
+    }
+
+    private static string CreateInterfaceDeclaration(string visibility, string typeName)
+    {
+        return
+            $$"""
+            {{visibility}} interface {{typeName}}
+            {
+                int Count { get; }
+                string Name { get; }
+                event global::System.Action? Changed;
+                void Execute();
+            }
+        """;
+    }
+
+    private static string CreateEnumDeclaration(string visibility, string typeName)
+    {
+        return
+            $$"""
+            {{visibility}} enum {{typeName}}
+            {
+                First,
+                Second
+            }
+            """;
     }
 
     private static MetadataReference[] GetExternalFixtureReferences()
@@ -270,7 +495,8 @@ public class NameofGeneratorBehaviorTests
             : [];
     }
 
-    private sealed record ExternalReferenceFixture(
+    private sealed record ExternalFixture(
         MetadataReference Reference,
+        string TypeName,
         string AssemblyName);
 }

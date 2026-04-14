@@ -39,20 +39,26 @@ namespace Nameof
 }
     },
     {
-      HintName: Nameof.System_ConsoleKeyInfo.g.cs,
+      HintName: Nameof.name_Behavior_External_ByAssemblyName_Interface_Public_ExternalFixtures_ByAssemblyNameInterfacePublic.g.cs,
       Source:
 #nullable enable
 
-namespace System
+namespace ExternalFixtures
 {
     [global::Microsoft.CodeAnalysis.Embedded]
-    internal static class Nameof_System_ConsoleKeyInfo
+    internal interface ByAssemblyNameInterfacePublic
     {
-        extension(global::Nameof.nameof<global::System.ConsoleKeyInfo>)
+    }
+
+    [global::Microsoft.CodeAnalysis.Embedded]
+    internal static class Nameof_ExternalFixtures_ByAssemblyNameInterfacePublic
+    {
+        extension(global::Nameof.nameof<global::ExternalFixtures.ByAssemblyNameInterfacePublic>)
         {
-            public static string _key => "_key";
-            public static string _keyChar => "_keyChar";
-            public static string _mods => "_mods";
+            public static string Changed => "Changed";
+            public static string Count => "Count";
+            public static string Execute => "Execute";
+            public static string Name => "Name";
         }
     }
 }

@@ -18,10 +18,7 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="Verify.XunitV3" Version="31.13.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
+    <PackageReference Include="Xunit.Combinatorial" Version="2.0.24" />
     <PackageReference Include="xunit.v3" Version="3.2.2" />
   </ItemGroup>
 
