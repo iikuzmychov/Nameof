@@ -364,3 +364,4 @@ FodyWeavers.xsd
 docs/superpowers/
 *.received.txt
 .claude/
+.roslyn-mcp/

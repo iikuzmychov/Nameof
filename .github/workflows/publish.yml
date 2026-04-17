@@ -19,23 +19,23 @@ jobs:
           global-json-file: global.json
 
       - name: Restore dependencies
-        run: dotnet restore WildDotNet.Nameof.slnx
+        run: dotnet restore Nameof.slnx
 
       - name: Build solution
-        run: dotnet build WildDotNet.Nameof.slnx --configuration Release --no-restore
+        run: dotnet build Nameof.slnx --configuration Release --no-restore
 
       - name: Run tests
-        run: dotnet run --project tests/WildDotNet.Nameof.Tests/WildDotNet.Nameof.Tests.csproj --configuration Release --no-build
+        run: dotnet run --project tests/Nameof.Tests/Nameof.Tests.csproj --configuration Release --no-build
 
       - name: Read package version
         id: version
         run: |
-          $version = dotnet msbuild src/WildDotNet.Nameof/WildDotNet.Nameof.csproj -getProperty:Version
+          $version = dotnet msbuild src/Nameof/Nameof.csproj -getProperty:Version
           "value=$version" >> $env:GITHUB_OUTPUT
         shell: pwsh
 
       - name: Pack NuGet package
-        run: dotnet pack src/WildDotNet.Nameof/WildDotNet.Nameof.csproj --configuration Release --no-build --output ${{ github.workspace }}/artifacts
+        run: dotnet pack src/Nameof/Nameof.csproj --configuration Release --no-build --output ${{ github.workspace }}/artifacts
 
       - name: Publish package to NuGet
         run: dotnet nuget push "${{ github.workspace }}/artifacts/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json
