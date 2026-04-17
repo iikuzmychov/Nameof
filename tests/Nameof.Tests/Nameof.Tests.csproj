@@ -11,6 +11,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Categories\Regression\BclRegressionTests.Generates_nameof_for_bcl_open_generic_dictionary_using_lookup_kind_equivalence_Generates_nameof_for_bcl_open_generic_dictionary_using_lookup_kind_equivalence.verified.txt\**" />
+    <Compile Remove="Categories\Regression\BclRegressionTests.Generates_nameof_for_bcl_open_generic_list_using_lookup_kind_equivalence_Generates_nameof_for_bcl_open_generic_list_using_lookup_kind_equivalence.verified.txt\**" />
+    <EmbeddedResource Remove="Categories\Regression\BclRegressionTests.Generates_nameof_for_bcl_open_generic_dictionary_using_lookup_kind_equivalence_Generates_nameof_for_bcl_open_generic_dictionary_using_lookup_kind_equivalence.verified.txt\**" />
+    <EmbeddedResource Remove="Categories\Regression\BclRegressionTests.Generates_nameof_for_bcl_open_generic_list_using_lookup_kind_equivalence_Generates_nameof_for_bcl_open_generic_list_using_lookup_kind_equivalence.verified.txt\**" />
+    <None Remove="Categories\Regression\BclRegressionTests.Generates_nameof_for_bcl_open_generic_dictionary_using_lookup_kind_equivalence_Generates_nameof_for_bcl_open_generic_dictionary_using_lookup_kind_equivalence.verified.txt\**" />
+    <None Remove="Categories\Regression\BclRegressionTests.Generates_nameof_for_bcl_open_generic_list_using_lookup_kind_equivalence_Generates_nameof_for_bcl_open_generic_list_using_lookup_kind_equivalence.verified.txt\**" />
+  </ItemGroup>
+
+  <ItemGroup>
 	<ProjectReference Include="..\..\src\Nameof\Nameof.csproj" />
   </ItemGroup>
 
