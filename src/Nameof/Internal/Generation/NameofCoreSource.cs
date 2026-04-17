@@ -32,6 +32,17 @@ internal static class NameofCoreSource
             }
 
             {{EmbeddedAnnotation}}
+            [global::System.AttributeUsage(
+                global::System.AttributeTargets.Class |
+                global::System.AttributeTargets.Struct |
+                global::System.AttributeTargets.Interface |
+                global::System.AttributeTargets.Enum,
+                Inherited = false)]
+            internal sealed class NameofStubAttribute : global::System.Attribute
+            {
+            }
+
+            {{EmbeddedAnnotation}}
             [global::System.AttributeUsage(global::System.AttributeTargets.Assembly, AllowMultiple = true)]
             internal sealed class GenerateNameofAttribute : global::System.Attribute
             {

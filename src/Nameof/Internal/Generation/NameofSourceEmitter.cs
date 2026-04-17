@@ -26,6 +26,7 @@ internal static class NameofSourceEmitter
 
         if (plan.Stub is { } stub)
         {
+            writer.Line($"[{GeneratorConstants.FullyQualifiedNamespace}.NameofStub]");
             OpenAnnotatedBlock(writer, $"internal{stub.Kind.SealedKeyword} {stub.Kind.TypeKeyword} {stub.TypeName}{stub.TypeParameters}");
 
             if (stub.Kind.NeedsPrivateConstructor)

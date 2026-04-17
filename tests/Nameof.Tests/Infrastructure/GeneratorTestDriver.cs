@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Nameof.Tests.Infrastructure.Model;
 
 namespace Nameof.Tests.Infrastructure;
@@ -8,6 +9,15 @@ namespace Nameof.Tests.Infrastructure;
 internal static class GeneratorTestDriver
 {
     public static GeneratorRunVerifyResult Run(string source, params MetadataReference[] extraReferences)
+        => Run(source, runAnalyzer: false, extraReferences);
+
+    public static GeneratorRunVerifyResult RunWithAnalyzer(string source, params MetadataReference[] extraReferences)
+        => Run(source, runAnalyzer: true, extraReferences);
+
+    private static GeneratorRunVerifyResult Run(
+        string source,
+        bool runAnalyzer,
+        params MetadataReference[] extraReferences)
     {
         var compilation = CSharpCompilation.Create(
             assemblyName: "GeneratorTests",
@@ -21,12 +31,21 @@ internal static class GeneratorTestDriver
 
         using var emitStream = new MemoryStream();
         var emitResult = outputCompilation.Emit(emitStream);
+        var analyzerDiagnostics = runAnalyzer
+            ? outputCompilation
+                .WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(new NameofStubUsageAnalyzer()))
+                .GetAnalyzerDiagnosticsAsync()
+                .GetAwaiter()
+                .GetResult()
+            : [];
 
         Assert.True(
             emitResult.Success,
             string.Join(Environment.NewLine, emitResult.Diagnostics.Select(static diagnostic => diagnostic.ToString())));
 
-        var allDiagnostics = diagnostics.AddRange(emitResult.Diagnostics);
+        var allDiagnostics = diagnostics
+            .AddRange(emitResult.Diagnostics)
+            .AddRange(analyzerDiagnostics);
 
         var nameofDiagnostics = allDiagnostics
             .Where(static diagnostic => diagnostic.Id.StartsWith("NAMEOF", StringComparison.Ordinal))

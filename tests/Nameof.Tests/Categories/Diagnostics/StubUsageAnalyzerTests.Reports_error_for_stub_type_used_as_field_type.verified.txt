@@ -1,4 +1,12 @@
 ﻿{
+  Diagnostics: [
+    {
+      Id: NAMEOF006,
+      Severity: Error,
+      Message: Generated Nameof stub type 'ConsoleStream' may only be used in nameof<T> or nameof(...) expressions,
+      Location: 11:13
+    }
+  ],
   GeneratedSources: [
     {
       HintName: Nameof.Core.g.cs,
@@ -44,25 +52,41 @@ namespace Nameof
 }
     },
     {
-      HintName: Nameof.ExternalFixtures_EnumInternal.g.cs,
+      HintName: Nameof.System_IO_ConsoleStream.g.cs,
       Source:
 #nullable enable
 
-namespace ExternalFixtures
+namespace System.IO
 {
     [global::Nameof.NameofStub]
     [global::Microsoft.CodeAnalysis.Embedded]
-    internal enum EnumInternal
+    internal sealed class ConsoleStream
     {
+        private ConsoleStream() { }
     }
 
     [global::Microsoft.CodeAnalysis.Embedded]
-    internal static class Nameof_ExternalFixtures_EnumInternal
+    internal static class Nameof_System_IO_ConsoleStream
     {
-        extension(global::Nameof.nameof<global::ExternalFixtures.EnumInternal>)
+        extension(global::Nameof.nameof<global::System.IO.ConsoleStream>)
         {
-            public static string First => "First";
-            public static string Second => "Second";
+            public static string CanRead => "CanRead";
+            public static string CanSeek => "CanSeek";
+            public static string CanWrite => "CanWrite";
+            public static string Dispose => "Dispose";
+            public static string Flush => "Flush";
+            public static string Length => "Length";
+            public static string Position => "Position";
+            public static string Read => "Read";
+            public static string ReadByte => "ReadByte";
+            public static string Seek => "Seek";
+            public static string SetLength => "SetLength";
+            public static string ValidateRead => "ValidateRead";
+            public static string ValidateWrite => "ValidateWrite";
+            public static string Write => "Write";
+            public static string WriteByte => "WriteByte";
+            public static string _canRead => "_canRead";
+            public static string _canWrite => "_canWrite";
         }
     }
 }
