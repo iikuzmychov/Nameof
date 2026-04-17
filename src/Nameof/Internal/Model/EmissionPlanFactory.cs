@@ -14,14 +14,16 @@ internal static class EmissionPlanFactory
             ? $"Generic.{typeIdentity}"
             : typeIdentity;
 
-        return new EmissionPlan(
-            shape.Identity.NamespaceName,
-            wrapperClassName,
-            wrapperHintIdentity,
-            shape.ExtensionTarget.FullyQualifiedTypeName,
-            shape.Members.Names,
-            shape.IsOpenGenericDefinition,
-            shape.GenericArity,
-            shape.Stub);
+        return new EmissionPlan
+        {
+            NamespaceName = shape.Identity.NamespaceName,
+            WrapperClassName = wrapperClassName,
+            WrapperHintIdentity = wrapperHintIdentity,
+            ExtensionTargetFullyQualifiedTypeName = shape.ExtensionTarget.FullyQualifiedTypeName,
+            MemberNames = shape.Members.Names,
+            IsOpenGenericDefinition = shape.IsOpenGenericDefinition,
+            GenericArity = shape.GenericArity,
+            Stub = shape.Stub,
+        };
     }
 }

@@ -8,10 +8,6 @@ using Nameof.Internal.Resolvers;
 
 namespace Nameof.Internal.Processing;
 
-internal readonly record struct RequestProcessingResult(
-    EmissionPlan? EmissionPlan,
-    ImmutableArray<Diagnostic> Diagnostics);
-
 internal sealed class NameofRequestProcessor
 {
     private readonly Compilation _compilation;
@@ -82,7 +78,11 @@ internal sealed class NameofRequestProcessor
             emissionPlan = emissionPlan with { Stub = null };
         }
 
-        return new RequestProcessingResult(emissionPlan, ImmutableArray<Diagnostic>.Empty);
+        return new RequestProcessingResult
+        {
+            EmissionPlan = emissionPlan,
+            Diagnostics = ImmutableArray<Diagnostic>.Empty,
+        };
     }
 
     private RequestProcessingResult CreateResolutionFailure(ParsedNameofRequest request)
@@ -99,7 +99,10 @@ internal sealed class NameofRequestProcessor
             return WithDiagnostic(NameofDiagnostics.CreateResolutionFailedUsingAssemblyName(request));
         }
 
-        return new RequestProcessingResult(null, ImmutableArray<Diagnostic>.Empty);
+        return new RequestProcessingResult
+        {
+            Diagnostics = ImmutableArray<Diagnostic>.Empty,
+        };
     }
 
     private ResolvedTypeShape? ResolveRequest(ParsedNameofRequest request)
@@ -117,6 +120,9 @@ internal sealed class NameofRequestProcessor
 
     private static RequestProcessingResult WithDiagnostic(Diagnostic diagnostic)
     {
-        return new RequestProcessingResult(null, ImmutableArray.Create(diagnostic));
+        return new RequestProcessingResult
+        {
+            Diagnostics = ImmutableArray.Create(diagnostic),
+        };
     }
 }

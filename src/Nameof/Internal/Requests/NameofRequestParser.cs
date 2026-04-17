@@ -38,24 +38,30 @@ internal static class NameofRequestParser
                 {
                     if (TypeNameUtilities.IsClosedConstructedGenericType(typeSymbol))
                     {
-                        builder.Add(new ParsedNameofRequest(
-                            RequestTarget.ForSymbol(typeSymbol),
-                            RequestGenericInfo.ClosedGeneric(),
-                            attributeLocation));
+                        builder.Add(new ParsedNameofRequest
+                        {
+                            Target = RequestTarget.ForSymbol(typeSymbol),
+                            Generic = RequestGenericInfo.ClosedGeneric(),
+                            AttributeLocation = attributeLocation,
+                        });
                     }
                     else if (TypeNameUtilities.IsOpenGenericDefinition(typeSymbol))
                     {
-                        builder.Add(new ParsedNameofRequest(
-                            RequestTarget.ForSymbol(typeSymbol.OriginalDefinition),
-                            RequestGenericInfo.OpenDefinition(typeSymbol.Arity),
-                            attributeLocation));
+                        builder.Add(new ParsedNameofRequest
+                        {
+                            Target = RequestTarget.ForSymbol(typeSymbol.OriginalDefinition),
+                            Generic = RequestGenericInfo.OpenDefinition(typeSymbol.Arity),
+                            AttributeLocation = attributeLocation,
+                        });
                     }
                     else
                     {
-                        builder.Add(new ParsedNameofRequest(
-                            RequestTarget.ForSymbol(typeSymbol),
-                            RequestGenericInfo.NonGeneric(),
-                            attributeLocation));
+                        builder.Add(new ParsedNameofRequest
+                        {
+                            Target = RequestTarget.ForSymbol(typeSymbol),
+                            Generic = RequestGenericInfo.NonGeneric(),
+                            AttributeLocation = attributeLocation,
+                        });
                     }
                 }
 
@@ -92,10 +98,12 @@ internal static class NameofRequestParser
                 var resolvedGeneric = compilation.GetTypeByMetadataName(fullTypeName);
                 if (resolvedGeneric is not null)
                 {
-                    builder.Add(new ParsedNameofRequest(
-                        RequestTarget.ForSymbol(resolvedGeneric.OriginalDefinition),
-                        RequestGenericInfo.OpenDefinition(genericArity),
-                        attributeLocation));
+                    builder.Add(new ParsedNameofRequest
+                    {
+                        Target = RequestTarget.ForSymbol(resolvedGeneric.OriginalDefinition),
+                        Generic = RequestGenericInfo.OpenDefinition(genericArity),
+                        AttributeLocation = attributeLocation,
+                    });
                     continue;
                 }
 
@@ -111,10 +119,12 @@ internal static class NameofRequestParser
             var resolved = compilation.GetTypeByMetadataName(fullTypeName);
             if (resolved is not null)
             {
-                builder.Add(new ParsedNameofRequest(
-                    RequestTarget.ForSymbol(resolved),
-                    RequestGenericInfo.NonGeneric(),
-                    attributeLocation));
+                builder.Add(new ParsedNameofRequest
+                {
+                    Target = RequestTarget.ForSymbol(resolved),
+                    Generic = RequestGenericInfo.NonGeneric(),
+                    AttributeLocation = attributeLocation,
+                });
                 continue;
             }
 
@@ -139,20 +149,24 @@ internal static class NameofRequestParser
         if (assemblyArgument.Kind == TypedConstantKind.Type &&
             assemblyArgument.Value is INamedTypeSymbol assemblyOfType)
         {
-            builder.Add(new ParsedNameofRequest(
-                RequestTarget.ForFullNameWithAssemblyOfType(fullTypeName, assemblyOfType),
-                genericInfo,
-                attributeLocation));
+            builder.Add(new ParsedNameofRequest
+            {
+                Target = RequestTarget.ForFullNameWithAssemblyOfType(fullTypeName, assemblyOfType),
+                Generic = genericInfo,
+                AttributeLocation = attributeLocation,
+            });
             return;
         }
 
         if (assemblyArgument.Kind == TypedConstantKind.Primitive &&
             assemblyArgument.Value is string assemblyName)
         {
-            builder.Add(new ParsedNameofRequest(
-                RequestTarget.ForFullNameWithAssemblyName(fullTypeName, assemblyName),
-                genericInfo,
-                attributeLocation));
+            builder.Add(new ParsedNameofRequest
+            {
+                Target = RequestTarget.ForFullNameWithAssemblyName(fullTypeName, assemblyName),
+                Generic = genericInfo,
+                AttributeLocation = attributeLocation,
+            });
         }
     }
 }

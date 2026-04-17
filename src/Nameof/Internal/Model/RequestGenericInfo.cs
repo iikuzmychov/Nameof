@@ -2,7 +2,7 @@ using System;
 
 namespace Nameof.Internal.Model;
 
-internal readonly record struct RequestGenericInfo
+internal sealed record RequestGenericInfo
 {
     private enum Kind
     {
@@ -11,15 +11,24 @@ internal readonly record struct RequestGenericInfo
         ClosedGeneric
     }
 
-    private readonly Kind _kind;
+    private Kind GenericKind { get; init; }
 
-    public int Arity { get; }
+    public int Arity { get; init; }
 
-    public bool IsOpenDefinition => _kind == Kind.OpenDefinition;
+    public bool IsOpenDefinition => GenericKind == Kind.OpenDefinition;
 
-    public bool IsClosedGeneric => _kind == Kind.ClosedGeneric;
+    public bool IsClosedGeneric => GenericKind == Kind.ClosedGeneric;
 
-    private RequestGenericInfo(Kind kind, int arity)
+    public static RequestGenericInfo NonGeneric()
+        => Create(Kind.NonGeneric, 0);
+
+    public static RequestGenericInfo OpenDefinition(int arity)
+        => Create(Kind.OpenDefinition, arity);
+
+    public static RequestGenericInfo ClosedGeneric()
+        => Create(Kind.ClosedGeneric, 0);
+
+    private static RequestGenericInfo Create(Kind kind, int arity)
     {
         if (kind == Kind.OpenDefinition && arity <= 0)
         {
@@ -31,16 +40,10 @@ internal readonly record struct RequestGenericInfo
             throw new ArgumentOutOfRangeException(nameof(arity), "Only open generic definitions can carry arity.");
         }
 
-        _kind = kind;
-        Arity = arity;
+        return new RequestGenericInfo
+        {
+            GenericKind = kind,
+            Arity = arity,
+        };
     }
-
-    public static RequestGenericInfo NonGeneric()
-        => new(Kind.NonGeneric, 0);
-
-    public static RequestGenericInfo OpenDefinition(int arity)
-        => new(Kind.OpenDefinition, arity);
-
-    public static RequestGenericInfo ClosedGeneric()
-        => new(Kind.ClosedGeneric, 0);
 }

@@ -4,10 +4,36 @@ using Microsoft.CodeAnalysis;
 
 namespace Nameof.Internal.Policies;
 
-internal readonly record struct StubKind(string TypeKeyword, string SealedKeyword, bool NeedsPrivateConstructor);
-
 internal static class StubPolicy
 {
+    private static readonly StubKind EnumStubKind = new()
+    {
+        TypeKeyword = "enum",
+        SealedKeyword = string.Empty,
+        NeedsPrivateConstructor = false,
+    };
+
+    private static readonly StubKind InterfaceStubKind = new()
+    {
+        TypeKeyword = "interface",
+        SealedKeyword = string.Empty,
+        NeedsPrivateConstructor = false,
+    };
+
+    private static readonly StubKind StructStubKind = new()
+    {
+        TypeKeyword = "struct",
+        SealedKeyword = string.Empty,
+        NeedsPrivateConstructor = false,
+    };
+
+    private static readonly StubKind ClassStubKind = new()
+    {
+        TypeKeyword = "class",
+        SealedKeyword = " sealed",
+        NeedsPrivateConstructor = true,
+    };
+
     internal static bool NeedsStub(INamedTypeSymbol type)
     {
         return type.DeclaredAccessibility != Accessibility.Public &&
@@ -18,10 +44,10 @@ internal static class StubPolicy
     {
         return type.TypeKind switch
         {
-            TypeKind.Enum => new StubKind("enum", "", false),
-            TypeKind.Interface => new StubKind("interface", "", false),
-            TypeKind.Struct => new StubKind("struct", "", false),
-            _ => new StubKind("class", " sealed", true)
+            TypeKind.Enum => EnumStubKind,
+            TypeKind.Interface => InterfaceStubKind,
+            TypeKind.Struct => StructStubKind,
+            _ => ClassStubKind
         };
     }
 
@@ -29,19 +55,19 @@ internal static class StubPolicy
     {
         if (type.IsEnum)
         {
-            return new StubKind("enum", "", false);
+            return EnumStubKind;
         }
 
         if (type.IsInterface)
         {
-            return new StubKind("interface", "", false);
+            return InterfaceStubKind;
         }
 
         if (type.IsValueType)
         {
-            return new StubKind("struct", "", false);
+            return StructStubKind;
         }
 
-        return new StubKind("class", " sealed", true);
+        return ClassStubKind;
     }
 }

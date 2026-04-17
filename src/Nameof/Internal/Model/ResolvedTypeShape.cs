@@ -1,9 +1,11 @@
 namespace Nameof.Internal.Model;
 
-internal sealed record ResolvedTypeShape(
-    ResolvedTargetIdentity Identity,
-    ExtensionTarget ExtensionTarget,
-    ResolvedMembers Members,
-    StubPlan? Stub,
-    bool IsOpenGenericDefinition = false,
-    int GenericArity = 0);
+internal sealed record ResolvedTypeShape
+{
+    public required ResolvedTargetIdentity Identity { get; init; }
+    public required ExtensionTarget ExtensionTarget { get; init; }
+    public required ResolvedMembers Members { get; init; }
+    public StubPlan? Stub { get; init; }
+    public bool IsOpenGenericDefinition { get; init; }
+    public int GenericArity { get; init; }
+}

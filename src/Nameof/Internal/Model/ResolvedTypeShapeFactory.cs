@@ -9,10 +9,6 @@ namespace Nameof.Internal.Model;
 
 internal static class ResolvedTypeShapeFactory
 {
-    private readonly record struct OpenGenericResolution(
-        ExtensionTarget ExtensionTarget,
-        StubPlan? Stub);
-
     public static ResolvedTypeShape? CreateResolvedSymbolType(
         INamedTypeSymbol type,
         HashSet<string> memberNames,
@@ -48,11 +44,13 @@ internal static class ResolvedTypeShapeFactory
         INamedTypeSymbol type,
         HashSet<string> memberNames)
     {
-        return new ResolvedTypeShape(
-            CreateSymbolIdentity(type),
-            CreateSymbolExtensionTarget(type),
-            new ResolvedMembers(memberNames),
-            CreateNonGenericSymbolStub(type));
+        return new ResolvedTypeShape
+        {
+            Identity = CreateSymbolIdentity(type),
+            ExtensionTarget = CreateSymbolExtensionTarget(type),
+            Members = new ResolvedMembers { Names = memberNames },
+            Stub = CreateNonGenericSymbolStub(type),
+        };
     }
 
     private static ResolvedTypeShape CreateOpenGenericSymbolShape(
@@ -63,13 +61,15 @@ internal static class ResolvedTypeShapeFactory
         var rootMetadataFullName = TypeNameUtilities.GetRootMetadataFullName(metadataFullName);
         var resolution = ResolveOpenGenericSymbol(type, rootMetadataFullName);
 
-        return new ResolvedTypeShape(
-            CreateOpenGenericSymbolIdentity(type, metadataFullName),
-            resolution.ExtensionTarget,
-            new ResolvedMembers(memberNames),
-            resolution.Stub,
-            IsOpenGenericDefinition: true,
-            GenericArity: type.Arity);
+        return new ResolvedTypeShape
+        {
+            Identity = CreateOpenGenericSymbolIdentity(type, metadataFullName),
+            ExtensionTarget = resolution.ExtensionTarget,
+            Members = new ResolvedMembers { Names = memberNames },
+            Stub = resolution.Stub,
+            IsOpenGenericDefinition = true,
+            GenericArity = type.Arity,
+        };
     }
 
     private static ResolvedTypeShape CreateNonGenericRuntimeShape(
@@ -79,11 +79,13 @@ internal static class ResolvedTypeShapeFactory
     {
         var fullTypeName = GetRequiredFullName(type);
 
-        return new ResolvedTypeShape(
-            CreateRuntimeIdentity(fullTypeName),
-            CreateRuntimeExtensionTarget(fullTypeName),
-            new ResolvedMembers(memberNames),
-            CreateNonGenericRuntimeStub(compilation, type, fullTypeName));
+        return new ResolvedTypeShape
+        {
+            Identity = CreateRuntimeIdentity(fullTypeName),
+            ExtensionTarget = CreateRuntimeExtensionTarget(fullTypeName),
+            Members = new ResolvedMembers { Names = memberNames },
+            Stub = CreateNonGenericRuntimeStub(compilation, type, fullTypeName),
+        };
     }
 
     private static ResolvedTypeShape CreateOpenGenericRuntimeShape(
@@ -95,51 +97,73 @@ internal static class ResolvedTypeShapeFactory
         var rootMetadataFullName = TypeNameUtilities.GetRootMetadataFullName(fullTypeName);
         var resolution = ResolveOpenGenericRuntime(compilation, type, rootMetadataFullName);
 
-        return new ResolvedTypeShape(
-            CreateOpenGenericRuntimeIdentity(type, fullTypeName),
-            resolution.ExtensionTarget,
-            new ResolvedMembers(memberNames),
-            resolution.Stub,
-            IsOpenGenericDefinition: true,
-            GenericArity: type.GetGenericArguments().Length);
+        return new ResolvedTypeShape
+        {
+            Identity = CreateOpenGenericRuntimeIdentity(type, fullTypeName),
+            ExtensionTarget = resolution.ExtensionTarget,
+            Members = new ResolvedMembers { Names = memberNames },
+            Stub = resolution.Stub,
+            IsOpenGenericDefinition = true,
+            GenericArity = type.GetGenericArguments().Length,
+        };
     }
 
     private static ResolvedTargetIdentity CreateSymbolIdentity(INamedTypeSymbol type)
     {
-        return new ResolvedTargetIdentity(
-            type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).Replace("global::", string.Empty),
-            GetContainingNamespace(type),
-            type.Name);
+        return new ResolvedTargetIdentity
+        {
+            WrapperIdentitySource = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).Replace("global::", string.Empty),
+            NamespaceName = GetContainingNamespace(type),
+            TypeName = type.Name,
+        };
     }
 
     private static ResolvedTargetIdentity CreateOpenGenericSymbolIdentity(INamedTypeSymbol type, string metadataFullName)
     {
-        return new ResolvedTargetIdentity(
-            metadataFullName,
-            GetContainingNamespace(type),
-            type.Name);
+        return new ResolvedTargetIdentity
+        {
+            WrapperIdentitySource = metadataFullName,
+            NamespaceName = GetContainingNamespace(type),
+            TypeName = type.Name,
+        };
     }
 
     private static ResolvedTargetIdentity CreateRuntimeIdentity(string fullTypeName)
     {
         var (namespaceName, typeName) = TypeNameUtilities.SplitNamespaceAndTypeName(fullTypeName);
-        return new ResolvedTargetIdentity(fullTypeName, namespaceName, typeName);
+        return new ResolvedTargetIdentity
+        {
+            WrapperIdentitySource = fullTypeName,
+            NamespaceName = namespaceName,
+            TypeName = typeName,
+        };
     }
 
     private static ResolvedTargetIdentity CreateOpenGenericRuntimeIdentity(Type type, string fullTypeName)
     {
         var (namespaceName, _) = TypeNameUtilities.SplitNamespaceAndTypeName(fullTypeName);
-        return new ResolvedTargetIdentity(fullTypeName, namespaceName, TypeNameUtilities.GetRootTypeName(type));
+        return new ResolvedTargetIdentity
+        {
+            WrapperIdentitySource = fullTypeName,
+            NamespaceName = namespaceName,
+            TypeName = TypeNameUtilities.GetRootTypeName(type),
+        };
     }
 
     private static ExtensionTarget CreateSymbolExtensionTarget(INamedTypeSymbol type)
     {
-        return new ExtensionTarget(type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+        return new ExtensionTarget
+        {
+            FullyQualifiedTypeName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+        };
     }
 
     private static ExtensionTarget CreateRuntimeExtensionTarget(string fullTypeName)
     {
-        return new ExtensionTarget($"global::{fullTypeName}");
+        return new ExtensionTarget
+        {
+            FullyQualifiedTypeName = $"global::{fullTypeName}",
+        };
     }
 
     private static OpenGenericResolution ResolveOpenGenericSymbol(
@@ -148,24 +172,35 @@ internal static class ResolvedTypeShapeFactory
     {
         var accessibleSibling = FindAccessibleNonGenericSibling(type);
         return accessibleSibling is not null
-            ? new OpenGenericResolution(CreateSiblingExtensionTarget(accessibleSibling), null)
-            : new OpenGenericResolution(
-                CreateRootMetadataExtensionTarget(rootMetadataFullName),
-                CreateStubPlan(
+            ? new OpenGenericResolution
+            {
+                ExtensionTarget = CreateSiblingExtensionTarget(accessibleSibling),
+            }
+            : new OpenGenericResolution
+            {
+                ExtensionTarget = CreateRootMetadataExtensionTarget(rootMetadataFullName),
+                Stub = CreateStubPlan(
                     GetContainingNamespace(type),
                     type.Name,
                     null,
-                    StubPolicy.GetStubKind(type)));
+                    StubPolicy.GetStubKind(type)),
+            };
     }
 
     private static ExtensionTarget CreateSiblingExtensionTarget(INamedTypeSymbol sibling)
     {
-        return new ExtensionTarget(sibling.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+        return new ExtensionTarget
+        {
+            FullyQualifiedTypeName = sibling.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+        };
     }
 
     private static ExtensionTarget CreateRootMetadataExtensionTarget(string rootMetadataFullName)
     {
-        return new ExtensionTarget($"global::{rootMetadataFullName}");
+        return new ExtensionTarget
+        {
+            FullyQualifiedTypeName = $"global::{rootMetadataFullName}",
+        };
     }
 
     private static StubPlan? CreateNonGenericSymbolStub(INamedTypeSymbol type)
@@ -207,18 +242,23 @@ internal static class ResolvedTypeShapeFactory
 
         if (accessibleSibling is not null)
         {
-            return new OpenGenericResolution(CreateSiblingExtensionTarget(accessibleSibling), null);
+            return new OpenGenericResolution
+            {
+                ExtensionTarget = CreateSiblingExtensionTarget(accessibleSibling),
+            };
         }
 
         var fullTypeName = GetRequiredFullName(type);
         var (namespaceName, _) = TypeNameUtilities.SplitNamespaceAndTypeName(fullTypeName);
-        return new OpenGenericResolution(
-            CreateRootMetadataExtensionTarget(rootMetadataFullName),
-            CreateStubPlan(
+        return new OpenGenericResolution
+        {
+            ExtensionTarget = CreateRootMetadataExtensionTarget(rootMetadataFullName),
+            Stub = CreateStubPlan(
                 namespaceName,
                 TypeNameUtilities.GetRootTypeName(type),
                 null,
-                StubPolicy.GetStubKind(type)));
+                StubPolicy.GetStubKind(type)),
+        };
     }
 
     private static StubPlan CreateStubPlan(
@@ -227,12 +267,14 @@ internal static class ResolvedTypeShapeFactory
         string? typeParameters,
         StubKind kind)
     {
-        return new StubPlan(
-            GetStubIdentity(namespaceName, typeName),
-            namespaceName,
-            typeName,
-            typeParameters,
-            kind);
+        return new StubPlan
+        {
+            Identity = GetStubIdentity(namespaceName, typeName),
+            NamespaceName = namespaceName,
+            TypeName = typeName,
+            TypeParameters = typeParameters,
+            Kind = kind,
+        };
     }
 
     private static string? GetContainingNamespace(INamedTypeSymbol type)
